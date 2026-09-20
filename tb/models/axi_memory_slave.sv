@@ -16,6 +16,7 @@ module axi_memory_slave #(
   logic [ID_W-1:0] wr_id;
   logic [ADDR_W-1:0] wr_addr;
   logic [2:0] wr_size;
+  logic [1:0] wr_burst;
   logic [8:0] wr_beats_left;
   logic [ID_W-1:0] bid_q;
   logic [1:0] bresp_q;
@@ -25,6 +26,7 @@ module axi_memory_slave #(
   logic [ID_W-1:0] rd_id;
   logic [ADDR_W-1:0] rd_addr;
   logic [2:0] rd_size;
+  logic [1:0] rd_burst;
   logic [8:0] rd_beats_left;
   logic [DATA_W-1:0] rdata_q;
   logic [ID_W-1:0] rid_q;
@@ -61,6 +63,7 @@ module axi_memory_slave #(
       wr_id          <= '0;
       wr_addr        <= '0;
       wr_size        <= '0;
+      wr_burst       <= '0;
       wr_beats_left  <= '0;
       bid_q          <= '0;
       bresp_q        <= 2'b00;
@@ -70,6 +73,7 @@ module axi_memory_slave #(
       rd_id          <= '0;
       rd_addr        <= '0;
       rd_size        <= '0;
+      rd_burst       <= '0;
       rd_beats_left  <= '0;
       rid_q          <= '0;
       rdata_q        <= '0;
@@ -82,6 +86,7 @@ module axi_memory_slave #(
         wr_id         <= axi.awid;
         wr_addr       <= axi.awaddr;
         wr_size       <= axi.awsize;
+        wr_burst      <= axi.awburst;
         wr_beats_left <= {1'b0, axi.awlen} + 9'd1;
       end
 
@@ -98,7 +103,9 @@ module axi_memory_slave #(
           bresp_q       <= 2'b00;
           bvalid_q      <= 1'b1;
         end else begin
-          wr_addr       <= wr_addr + ({{(ADDR_W-1){1'b0}},1'b1} << wr_size);
+          if (wr_burst == 2'b01)
+            wr_addr <= wr_addr + ({{(ADDR_W-1){1'b0}},1'b1} << wr_size);
+          // FIXED (2'b00) intentionally holds wr_addr constant.
           wr_beats_left <= wr_beats_left - 9'd1;
         end
       end
@@ -111,6 +118,7 @@ module axi_memory_slave #(
         rd_id         <= axi.arid;
         rd_addr       <= axi.araddr;
         rd_size       <= axi.arsize;
+        rd_burst      <= axi.arburst;
         rd_beats_left <= {1'b0, axi.arlen} + 9'd1;
       end
 
@@ -129,7 +137,9 @@ module axi_memory_slave #(
           rd_beats_left <= '0;
           rlast_q       <= 1'b0;
         end else begin
-          rd_addr       <= rd_addr + ({{(ADDR_W-1){1'b0}},1'b1} << rd_size);
+          if (rd_burst == 2'b01)
+            rd_addr <= rd_addr + ({{(ADDR_W-1){1'b0}},1'b1} << rd_size);
+          // FIXED (2'b00) intentionally holds rd_addr constant.
           rd_beats_left <= rd_beats_left - 9'd1;
         end
       end
