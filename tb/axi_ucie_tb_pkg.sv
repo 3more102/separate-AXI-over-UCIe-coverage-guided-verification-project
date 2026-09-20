@@ -7,11 +7,7 @@ package axi_ucie_tb_pkg;
   parameter int AXI_DATA_W = 32;
   parameter int AXI_STRB_W = AXI_DATA_W/8;
 
-  typedef virtual axi_if #(
-    .ID_W(AXI_ID_W),
-    .ADDR_W(AXI_ADDR_W),
-    .DATA_W(AXI_DATA_W)
-  ) axi_vif_t;
+  typedef virtual axi_if #(AXI_ID_W, AXI_ADDR_W, AXI_DATA_W) axi_vif_t;
 
   typedef enum bit {AXI_READ, AXI_WRITE} axi_kind_e;
 
@@ -453,6 +449,7 @@ package axi_ucie_tb_pkg;
     task run_phase(uvm_phase phase);
       axi_smoke_seq seq = axi_smoke_seq::type_id::create("seq");
       phase.raise_objection(this);
+      phase.phase_done.set_drain_time(this, 100ns);
       seq.start(env.seqr);
       phase.drop_objection(this);
     endtask
@@ -471,6 +468,7 @@ package axi_ucie_tb_pkg;
     task run_phase(uvm_phase phase);
       axi_cov_guided_seq seq = axi_cov_guided_seq::type_id::create("seq");
       phase.raise_objection(this);
+      phase.phase_done.set_drain_time(this, 100ns);
       seq.start(env.seqr);
       phase.drop_objection(this);
     endtask
