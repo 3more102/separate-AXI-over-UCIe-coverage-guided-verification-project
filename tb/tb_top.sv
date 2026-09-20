@@ -66,6 +66,6 @@ module tb_top;
 
   initial begin
     #2ms;
-    \`uvm_fatal("TIMEOUT", "Global simulation timeout")
+    `uvm_fatal("TIMEOUT", "Global simulation timeout")
   end
 endmodule
