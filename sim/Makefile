@@ -18,10 +18,10 @@ smoke: | $(BUILD)
 	$(VVP) $(BUILD)/smoke.vvp
 
 py-test:
-	cd .. && $(PYTHON) -m unittest discover -s tests -v
+	cd .. && PYTHONPATH=python $(PYTHON) -m unittest discover -s tests -v
 
 guided:
-	cd .. && $(PYTHON) -m cgverif.regress --mode guided --iterations 16 --seed 9 --out reports/guided-smoke.json
+	cd .. && PYTHONPATH=python $(PYTHON) -m cgverif.regress --mode guided --iterations 16 --seed 9 --out reports/guided-smoke.json
 
 clean:
 	rm -rf $(BUILD)
