@@ -30,6 +30,7 @@ The repository currently contains:
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
 | Partial write | Abstract model | RTL smoke and UVM sequence |
+| Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
 | Functional coverage | Abstract bins + feedback | Simulator covergroups and crosses |
@@ -67,7 +68,7 @@ read data ordering.
 
 ## Next implementation milestone
 
-1. Packetize full AXI INCR/FIXED/WRAP bursts.
+1. Packetize full AXI INCR/FIXED/WRAP bursts and add legal narrow-transfer lane mapping.
 2. Add configurable multiple outstanding transactions.
 3. Add ID-aware reorder checking.
 4. Build UVM AXI and link agents plus scoreboard and coverage subscriber.
