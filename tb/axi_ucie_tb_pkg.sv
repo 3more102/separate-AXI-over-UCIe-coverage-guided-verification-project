@@ -19,7 +19,8 @@ package axi_ucie_tb_pkg;
     rand bit [2:0] size;
     rand bit [1:0] burst;
     rand bit [AXI_DATA_W-1:0] data_q[$];
-    rand bit [AXI_STRB_W-1:0] strb_q[$];
+         bit [AXI_STRB_W-1:0] strb_q[$];
+         bit [AXI_ID_W-1:0] rsp_id;
          bit [1:0] resp_q[$];
 
     constraint c_len   { len inside {[0:15]}; }
@@ -217,6 +218,7 @@ package axi_ucie_tb_pkg;
           if (vif.rid !== tr.id)
             `uvm_error("RID", $sformatf("RID mismatch: request id=%0h response id=%0h",
                                         tr.id, vif.rid))
+          tr.rsp_id = vif.rid;
           tr.data_q.push_back(vif.rdata);
           tr.resp_q.push_back(vif.rresp);
           if (vif.rlast)
@@ -253,8 +255,9 @@ package axi_ucie_tb_pkg;
     endfunction
 
     function bit equivalent(axi_txn a, axi_txn b);
-      if (a.kind != b.kind || a.id != b.id || a.addr != b.addr ||
-          a.len != b.len || a.size != b.size || a.burst != b.burst)
+      if (a.kind != b.kind || a.id != b.id || a.rsp_id != b.rsp_id ||
+          a.addr != b.addr || a.len != b.len ||
+          a.size != b.size || a.burst != b.burst)
         return 0;
       if (a.data_q.size() != b.data_q.size() ||
           a.strb_q.size() != b.strb_q.size() ||
