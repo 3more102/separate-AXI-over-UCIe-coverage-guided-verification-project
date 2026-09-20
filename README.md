@@ -1,66 +1,75 @@
 # Separate AXI-over-UCIe Coverage-Guided Verification
 
-A SystemVerilog/UVM verification project for an AXI transaction path transported over a simplified UCIe-style link abstraction. The repository is organized so protocol checking, functional coverage, scoreboarding, and coverage-guided stimulus are separated from the DUT/reference transport model.
+Verification-first project for AXI traffic transported over a simplified **digital UCIe/FDI-style link abstraction**. The goal is to build a measurable coverage-guided verification flow while keeping AXI stimulus, link behavior, checking, and coverage feedback separable.
 
-## Goals
+> Scope: digital protocol/transaction behavior only. This repository does **not** claim UCIe PHY, SerDes, electrical, or certification compliance.
 
-- Verify AXI4 request/response behavior across an AXI-to-link-to-AXI path.
-- Check ordering, IDs, bursts, backpressure, reset recovery, and response propagation.
-- Model transport faults and link stalls without coupling them to AXI stimulus.
-- Use functional coverage feedback to bias future stimulus toward uncovered scenarios.
-- Keep a lightweight open-source smoke layer separate from the full UVM regression.
+## Implemented now
+
+- Single-beat AXI4-subset to abstract-link bridge.
+- Abstract UCIe-style memory endpoint.
+- End-to-end SystemVerilog smoke test with request stall, response backpressure, local rejection of unsupported bursts, and reset recovery.
+- AXI ready/valid stability assertions.
+- AXI interface and reference ready/valid transport model.
+- Python coverage model with deterministic scenario replay.
+- UCB1 coverage-guided scenario planner.
+- Coverage-hole to bias-knob helper.
+- Unit tests for the Python planner/model and feedback helper.
+- Functional-coverage scaffold for AXI traffic/flow-control dimensions.
+- GitHub Actions CI for Python tests and Icarus RTL smoke.
 
 ## Repository layout
 
 ```text
-rtl/                 Reference transport/DUT model
-tb/interfaces/       AXI and link interfaces
-tb/agents/           UVM AXI + link agents
-tb/env/              Scoreboard, coverage collector, environment
-tb/sequences/        Directed, random, and coverage-guided sequences
-tb/tests/            UVM tests
+rtl/                 reference transport/DUT models
+tb/interfaces/       AXI interface
+tb/models/           AXI memory model
+tb/smoke/            open-source end-to-end smoke test
 tb/assertions/       SVA protocol checks
-sim/                 File lists and simulator scripts
-scripts/             Coverage feedback/regression helpers
-docs/                Architecture and verification plan
-.github/workflows/    CI smoke/lint
+tb/coverage/         functional-coverage scaffold
+python/cgverif/      coverage model + guided planner
+scripts/             coverage-feedback helpers
+tests/               Python unit tests
+sim/                 Icarus build/run targets
+docs/                architecture and verification plan
+.github/workflows/    CI
 ```
-
-## Verification strategy
-
-The testbench keeps **protocol stimulus**, **transport behavior**, and **coverage feedback** independent:
-
-1. AXI sequences generate reads/writes with constrained IDs, lengths, sizes, and address classes.
-2. The reference bridge converts accepted AXI operations into link packets and reconstructs responses.
-3. Monitors publish observed transactions to the scoreboard and coverage collector.
-4. The scoreboard compares end-to-end AXI semantics rather than internal packet timing.
-5. Coverage feedback exports uncovered bins to a small JSON file; the next run biases sequence knobs toward those bins.
-
-The UCIe side here is intentionally a **verification abstraction**, not a claim of full UCIe PHY/adapter compliance. It is a packetized ready/valid transport boundary suitable for studying AXI-over-die-to-die verification methodology.
 
 ## Quick start
 
-Commercial UVM simulator example:
+Python verification layer:
 
 ```bash
-cd sim
-make questa TEST=axi_ucie_smoke_test SEED=1
-make questa TEST=axi_ucie_cov_guided_test SEED=42
+PYTHONPATH=python python -m unittest discover -s tests -v
+PYTHONPATH=python python -m cgverif.regress --mode baseline --iterations 32 --seed 9 --out reports/baseline.json
+PYTHONPATH=python python -m cgverif.regress --mode guided   --iterations 32 --seed 9 --out reports/guided.json
 ```
 
-Open-source smoke/lint:
+RTL smoke with Icarus Verilog:
 
 ```bash
 make -C sim lint
 make -C sim smoke
 ```
 
-Coverage feedback helper:
+Or run the full open-source milestone:
 
 ```bash
-python3 scripts/coverage_feedback.py --input build/coverage.json --output build/next_bias.json
+make -C sim all
 ```
 
-## Initial milestone
+Coverage-feedback helper:
 
-The first milestone provides a compilable reference path, interfaces, protocol assertions, a UVM environment skeleton with end-to-end scoreboarding, a coverage model, and a coverage-guided sequence hook. The next milestones should add full burst data checking, richer UCIe packet/error modeling, and simulator-specific coverage database merging.
+```bash
+python scripts/coverage_feedback.py \
+  --input examples/coverage.sample.json \
+  --output reports/next_bias.json
+```
+
+## Current limitation
+
+The RTL bridge smoke path is intentionally **single-beat** today: requests with `AxLEN != 0` are rejected locally. Full AXI4 bursts, multiple outstanding transactions in RTL, credit accounting, CRC/retry, timeout recovery, a complete UVM environment, scoreboard, failure minimization, and simulator coverage-database integration remain future milestones.
+
+The Python model already contains abstract scenario categories for several of those future behaviors so the coverage-guidance loop can be developed and tested independently.
+
+See `docs/ARCHITECTURE.md` and `docs/VERIFICATION_PLAN.md`.
