@@ -5,6 +5,8 @@
     "len.medium": 3,
     "len.long": 0,
     "burst.fixed": 0,
-    "burst.incr": 31
+    "burst.incr": 31,
+    "size.byte": 0,
+    "size.halfword": 5
   }
 }
