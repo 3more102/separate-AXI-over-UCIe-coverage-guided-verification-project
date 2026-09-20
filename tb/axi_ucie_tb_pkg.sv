@@ -345,7 +345,12 @@ package axi_ucie_tb_pkg;
       sample_len     = t.len;
       sample_burst   = t.burst;
       sample_size    = t.size;
-      sample_partial = t.partial_write;
+      sample_partial = 1'b0;
+      if (t.kind == AXI_WRITE) begin
+        foreach (t.strb_q[i])
+          if (t.strb_q[i] != '1)
+            sample_partial = 1'b1;
+      end
       cg.sample();
     endfunction
   endclass
