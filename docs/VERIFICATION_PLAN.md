@@ -16,7 +16,8 @@ The repository currently contains:
 - Explicit rejection of unsupported multi-beat requests.
 - A deterministic Python transaction/link model.
 - Coverage-guided scenario selection using a UCB1 planner.
-- Coverage JSON to next-run bias conversion.
+- Per-bin neutral coverage hit-count export, including zero-hit bins.
+- Coverage JSON to next-run bias conversion with explicit mapped/unmapped holes.
 - UVM AXI driver/sequencer, dual monitors, semantic end-to-end scoreboard, covergroups, and coverage-guided sequence running against a separate burst-capable channel-tunnel reference DUT.
 - Python unit tests and an Icarus-based smoke/lint flow.
 - GitHub Actions CI for the open-source flow; Questa/UVM is an optional local target.
@@ -34,7 +35,7 @@ The repository currently contains:
 | Partial write | Abstract model | RTL smoke and UVM sequence |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
-| Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
+| Functional coverage | Abstract bins + hit counts + feedback + UVM covergroups | Export/merge simulator coverage |
 | Assertions | Ready/valid stability | Ordering, burst legality, liveness |
 
 ## UVM coverage layer
@@ -65,9 +66,17 @@ read data ordering.
 
 1. Run seeded tests and export coverage hit counts.
 2. Preserve the seed and coverage report as artifacts.
-3. Convert coverage holes into stimulus bias.
-4. Apply the bias only to future stimulus probabilities.
-5. Never change checkers, assertions, or pass/fail policy based on coverage.
+3. Keep explicit zero-hit bins in the neutral `bins` object.
+4. Convert coverage holes into mapped stimulus bias plusargs while retaining
+   unmapped holes for visibility.
+5. Apply the bias only to future stimulus probabilities.
+6. Never change checkers, assertions, or pass/fail policy based on coverage.
+
+The open-source `make -C sim all` flow now executes steps 1-4 using
+`build/guided_regression.json` as the input to
+`build/next_bias.json`. The same feedback helper also accepts UVM-shaped bin
+names. Abstract `op.read` and `op.write` are aliases for the UVM
+read/write bias knobs.
 
 ## Next implementation milestone
 
