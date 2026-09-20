@@ -1,0 +1,22 @@
+name: link-checker-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  link-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog
+      - name: Compile and run checker unit test
+        run: |
+          mkdir -p build
+          cd sim
+          iverilog -g2012 -Wall -s link_protocol_checker_tb -o ../build/link_checker.vvp -f link_checker.f
+          vvp ../build/link_checker.vvp | tee ../build/link_checker.log
+          grep -q "LINK CHECKER TEST PASS" ../build/link_checker.log
