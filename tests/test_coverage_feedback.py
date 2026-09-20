@@ -42,6 +42,24 @@ class CoverageFeedbackTests(unittest.TestCase):
         )
         self.assertEqual(bins, {"kind.write": 0, "kind.read": 2})
 
+    def test_transfer_size_bias_mapping(self):
+        result = coverage_feedback.build_bias(
+            {"size.narrow": 0, "size.full": 7}
+        )
+        self.assertEqual(result["bias_knobs"], ["BIAS_NARROW"])
+        self.assertEqual(result["plusargs"], ["+BIAS_NARROW=1"])
+
+    def test_combined_narrow_and_partial_bias_mapping(self):
+        result = coverage_feedback.build_bias(
+            {"size.narrow": 0, "strobe.partial": 0}
+        )
+        self.assertEqual(
+            result["bias_knobs"], ["BIAS_NARROW", "BIAS_PARTIAL"]
+        )
+        self.assertEqual(
+            result["plusargs"], ["+BIAS_NARROW=1", "+BIAS_PARTIAL=1"]
+        )
+
     def test_threshold(self):
         result = coverage_feedback.build_bias({"len.medium": 2}, hit_threshold=3)
         self.assertEqual(result["bias_knobs"], ["BIAS_MEDIUM"])
