@@ -11,9 +11,9 @@ UVM_SEED      ?= 1
 UVM_TXN_COUNT ?= 100
 UVM_PLUSARGS  ?=
 
-.PHONY: all smoke reference-smoke lint py-test regress experiment feedback questa questa-guided clean
+.PHONY: all smoke reference-smoke narrow-smoke lint py-test regress experiment feedback questa questa-guided clean
 
-all: lint py-test smoke reference-smoke regress experiment feedback
+all: lint py-test smoke reference-smoke narrow-smoke regress experiment feedback
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -34,6 +34,16 @@ reference-smoke: | $(BUILD)
 		../tb/models/axi_memory_slave.sv \
 		../tb/reference_smoke_tb.sv
 	./$(BUILD)/vlt_reference/reference_smoke
+
+narrow-smoke: | $(BUILD)
+	$(VERILATOR) --binary --timing -Wall -Wno-fatal \
+		--top-module narrow_lane_smoke_tb \
+		-Mdir $(BUILD)/vlt_narrow -o narrow_lane_smoke \
+		../tb/interfaces/axi_if.sv \
+		../rtl/axi_ucie_reference_dut.sv \
+		../tb/models/axi_memory_slave.sv \
+		../tb/narrow_lane_smoke_tb.sv
+	./$(BUILD)/vlt_narrow/narrow_lane_smoke
 
 py-test:
 	cd .. && PYTHONPATH=python $(PYTHON) -m unittest discover -s tests -p "test_*.py"
