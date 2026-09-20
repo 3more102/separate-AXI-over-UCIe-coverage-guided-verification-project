@@ -11,9 +11,9 @@ UVM_SEED      ?= 1
 UVM_TXN_COUNT ?= 100
 UVM_PLUSARGS  ?=
 
-.PHONY: all smoke reference-smoke lint py-test regress experiment feedback questa questa-guided clean
+.PHONY: all smoke response-integrity reference-smoke lint py-test regress experiment feedback questa questa-guided clean
 
-all: lint py-test smoke reference-smoke regress experiment feedback
+all: lint py-test smoke response-integrity reference-smoke regress experiment feedback
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -24,6 +24,10 @@ lint: | $(BUILD)
 smoke: | $(BUILD)
 	$(IVERILOG) -g2012 -Wall -s smoke_tb -o $(BUILD)/smoke.vvp -f files_smoke.f
 	$(VVP) $(BUILD)/smoke.vvp
+
+response-integrity: | $(BUILD)
+	$(IVERILOG) -g2012 -Wall -s response_integrity_tb -o $(BUILD)/response_integrity.vvp -f files_response_integrity.f
+	$(VVP) $(BUILD)/response_integrity.vvp
 
 reference-smoke: | $(BUILD)
 	$(VERILATOR) --binary --timing -Wall -Wno-fatal \
