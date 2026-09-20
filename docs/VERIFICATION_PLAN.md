@@ -40,7 +40,7 @@ The repository currently contains:
 
 ## UVM coverage layer
 
-The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, full-vs-partial write strobes, and the operation x length x burst cross. Partial strobes are generated within full-width writes; narrow byte/halfword transfer lane mapping remains intentionally deferred until it is modeled correctly. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, BIAS_WRITE, and BIAS_PARTIAL plusargs.
+The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, full-vs-partial write strobes, and the operation x length x burst cross. Partial strobes are generated within full-width UVM writes. Narrow byte/halfword lane behavior is exercised by the separate open-source narrow-lane smoke, but narrow-transfer randomization is not yet enabled in the UVM sequence. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, BIAS_WRITE, and BIAS_PARTIAL plusargs.
 
 The next UVM expansion should cover address
 alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
