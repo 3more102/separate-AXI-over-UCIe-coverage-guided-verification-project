@@ -33,13 +33,35 @@ package axi_ucie_tb_pkg;
     constraint c_payload {
       if (kind == AXI_WRITE) {
         data_q.size() == len + 1;
-        strb_q.size() == len + 1;
-        foreach (strb_q[i]) strb_q[i] == '1;
       } else {
         data_q.size() == 0;
-        strb_q.size() == 0;
       }
     }
+
+    function void post_randomize();
+      bit [AXI_ADDR_W-1:0] beat_addr;
+      bit [AXI_STRB_W-1:0] lane_mask;
+      int unsigned bytes_per_beat;
+      int unsigned first_lane;
+
+      strb_q.delete();
+      if (kind != AXI_WRITE)
+        return;
+
+      beat_addr = addr;
+      bytes_per_beat = 1 << size;
+
+      foreach (data_q[i]) begin
+        first_lane = beat_addr % AXI_STRB_W;
+        lane_mask = '0;
+        for (int unsigned byte_idx = 0; byte_idx < bytes_per_beat; byte_idx++)
+          lane_mask[first_lane + byte_idx] = 1'b1;
+        strb_q.push_back(lane_mask);
+
+        if (burst == 2'b01)
+          beat_addr += bytes_per_beat;
+      end
+    endfunction
 
     \`uvm_object_utils_begin(axi_txn)
       \`uvm_field_enum(axi_kind_e, kind, UVM_ALL_ON)
@@ -191,11 +213,15 @@ package axi_ucie_tb_pkg;
           if (vif.wlast)
             break;
         end
+        if (tr.data_q.size() != (tr.len + 1))
+          `uvm_error("WBEATS", $sformatf("write beat count mismatch: AxLEN=%0d beats=%0d",
+                                          tr.len, tr.data_q.size()))
 
         do @(posedge vif.aclk); while (!(vif.bvalid && vif.bready));
         if (vif.bid !== tr.id)
           `uvm_error("BID", $sformatf("BID mismatch: request id=%0h response id=%0h",
                                       tr.id, vif.bid))
+        tr.rsp_id = vif.bid;
         tr.resp_q.push_back(vif.bresp);
         ap.write(tr);
       end
@@ -224,6 +250,9 @@ package axi_ucie_tb_pkg;
           if (vif.rlast)
             break;
         end
+        if (tr.data_q.size() != (tr.len + 1))
+          `uvm_error("RBEATS", $sformatf("read beat count mismatch: AxLEN=%0d beats=%0d",
+                                          tr.len, tr.data_q.size()))
         ap.write(tr);
       end
     endtask
