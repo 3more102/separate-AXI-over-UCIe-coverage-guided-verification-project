@@ -1,66 +1,71 @@
 # Separate AXI-over-UCIe Coverage-Guided Verification
 
-A SystemVerilog/UVM verification project for an AXI transaction path transported over a simplified UCIe-style link abstraction. The repository is organized so protocol checking, functional coverage, scoreboarding, and coverage-guided stimulus are separated from the DUT/reference transport model.
+SystemVerilog and Python verification project for an AXI transaction path
+transported over a simplified UCIe-style ready/valid link abstraction.
 
-## Goals
+The UCIe side is intentionally a verification abstraction, not a claim of full
+UCIe PHY/Adapter compliance.
 
-- Verify AXI4 request/response behavior across an AXI-to-link-to-AXI path.
-- Check ordering, IDs, bursts, backpressure, reset recovery, and response propagation.
-- Model transport faults and link stalls without coupling them to AXI stimulus.
-- Use functional coverage feedback to bias future stimulus toward uncovered scenarios.
-- Keep a lightweight open-source smoke layer separate from the full UVM regression.
+## What is implemented
+
+- Single-beat AXI read/write bridge with independent AW/W buffering.
+- UCIe-style request/response transport and memory endpoint.
+- AXI/link backpressure scenarios and reset recovery smoke testing.
+- Local SLVERR for unsupported multi-beat requests.
+- AXI ready/valid stability assertions.
+- Deterministic abstract transport model with retry/error scenarios.
+- Coverage-guided UCB1 planner.
+- Coverage-hole to next-run plusarg bias helper.
+- Python unit tests, Icarus smoke/lint, and GitHub Actions CI.
 
 ## Repository layout
 
-```text
-rtl/                 Reference transport/DUT model
-tb/interfaces/       AXI and link interfaces
-tb/agents/           UVM AXI + link agents
-tb/env/              Scoreboard, coverage collector, environment
-tb/sequences/        Directed, random, and coverage-guided sequences
-tb/tests/            UVM tests
-tb/assertions/       SVA protocol checks
-sim/                 File lists and simulator scripts
-scripts/             Coverage feedback/regression helpers
-docs/                Architecture and verification plan
-.github/workflows/    CI smoke/lint
-```
-
-## Verification strategy
-
-The testbench keeps **protocol stimulus**, **transport behavior**, and **coverage feedback** independent:
-
-1. AXI sequences generate reads/writes with constrained IDs, lengths, sizes, and address classes.
-2. The reference bridge converts accepted AXI operations into link packets and reconstructs responses.
-3. Monitors publish observed transactions to the scoreboard and coverage collector.
-4. The scoreboard compares end-to-end AXI semantics rather than internal packet timing.
-5. Coverage feedback exports uncovered bins to a small JSON file; the next run biases sequence knobs toward those bins.
-
-The UCIe side here is intentionally a **verification abstraction**, not a claim of full UCIe PHY/adapter compliance. It is a packetized ready/valid transport boundary suitable for studying AXI-over-die-to-die verification methodology.
+    rtl/                 Reference RTL transport path
+    tb/interfaces/       AXI interface
+    tb/assertions/       Protocol SVA
+    tb/models/           Testbench models
+    tb/smoke/            Open-source executable smoke test
+    python/cgverif/      Abstract model and coverage-guided planner
+    tests/               Python unit tests
+    examples/            Example coverage input
+    scripts/             Coverage feedback helper
+    sim/                 Build targets and file lists
+    docs/                Verification plan
+    .github/workflows/   Continuous integration
 
 ## Quick start
 
-Commercial UVM simulator example:
+Open-source RTL checks:
 
-```bash
-cd sim
-make questa TEST=axi_ucie_smoke_test SEED=1
-make questa TEST=axi_ucie_cov_guided_test SEED=42
-```
+    make -C sim lint
+    make -C sim smoke
 
-Open-source smoke/lint:
+Python tests:
 
-```bash
-make -C sim lint
-make -C sim smoke
-```
+    PYTHONPATH=python python3 -m unittest discover -s tests -p "test_*.py"
 
-Coverage feedback helper:
+Coverage-guided abstract regression:
 
-```bash
-python3 scripts/coverage_feedback.py --input build/coverage.json --output build/next_bias.json
-```
+    PYTHONPATH=python python3 -m cgverif.regress \
+      --mode guided --iterations 32 --transactions 16 --seed 1 \
+      --out build/guided_regression.json
 
-## Initial milestone
+Coverage feedback:
 
-The first milestone provides a compilable reference path, interfaces, protocol assertions, a UVM environment skeleton with end-to-end scoreboarding, a coverage model, and a coverage-guided sequence hook. The next milestones should add full burst data checking, richer UCIe packet/error modeling, and simulator-specific coverage database merging.
+    python3 scripts/coverage_feedback.py \
+      --input examples/coverage.sample.json \
+      --output build/next_bias.json
+
+Run the complete local open-source verification set with:
+
+    make -C sim all
+
+## Current boundary
+
+The RTL milestone supports one AXI data beat per request. Multi-beat bursts,
+multiple outstanding transactions, out-of-order completion, and detailed UCIe
+retry/CRC behavior are the next RTL/UVM milestones. The abstract Python model
+already exercises credit stalls, CRC retry, timeout retry, reset recovery, and
+coverage-guided scenario selection.
+
+See docs/VERIFICATION_PLAN.md for the implementation matrix and next steps.
