@@ -9,9 +9,22 @@ module reference_smoke_tb;
   logic rst_n = 1'b0;
   logic req_stall = 1'b0;
   logic rsp_stall = 1'b0;
+  logic [7:0] lfsr = 8'hA5;
   integer errors = 0;
 
   always #5 clk = ~clk;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      lfsr      <= 8'hA5;
+      req_stall <= 1'b0;
+      rsp_stall <= 1'b0;
+    end else begin
+      lfsr      <= {lfsr[6:0], lfsr[7] ^ lfsr[5] ^ lfsr[4] ^ lfsr[3]};
+      req_stall <= lfsr[0] & lfsr[3];
+      rsp_stall <= lfsr[1] & lfsr[4];
+    end
+  end
 
   axi_if #(
     .ID_W(ID_W), .ADDR_W(ADDR_W), .DATA_W(DATA_W)
@@ -172,7 +185,7 @@ module reference_smoke_tb;
     @(negedge clk);
     rst_n = 1'b1;
 
-    $display("TEST: four-beat INCR burst preserves sequential addresses");
+    $display("TEST: four-beat INCR burst survives deterministic request/response stalls");
     axi_write4(
       32'h0000_0040, 2'b01, 4'h3,
       32'h1111_0001, 32'h2222_0002, 32'h3333_0003, 32'h4444_0004
@@ -182,7 +195,7 @@ module reference_smoke_tb;
       32'h1111_0001, 32'h2222_0002, 32'h3333_0003, 32'h4444_0004
     );
 
-    $display("TEST: four-beat FIXED burst holds one address");
+    $display("TEST: four-beat FIXED burst holds one address under transport stalls");
     axi_write4(
       32'h0000_0080, 2'b00, 4'h5,
       32'hAAAA_0001, 32'hBBBB_0002, 32'hCCCC_0003, 32'hDDDD_0004
