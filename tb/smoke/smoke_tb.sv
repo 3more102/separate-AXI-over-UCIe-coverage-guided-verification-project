@@ -5,6 +5,10 @@ module smoke_tb;
   localparam int DATA_W = 64;
   localparam int ID_W   = 4;
 
+  localparam logic [1:0] RESP_OKAY   = 2'b00;
+  localparam logic [1:0] RESP_SLVERR = 2'b10;
+  localparam logic [1:0] RESP_DECERR = 2'b11;
+
   logic clk = 1'b0;
   logic rst_n = 1'b0;
   always #5 clk = ~clk;
@@ -50,8 +54,11 @@ module smoke_tb;
   logic [DATA_W-1:0] rsp_rdata;
 
   logic allow_req;
+  logic inject_error;
+  logic [1:0] inject_resp;
   integer errors = 0;
   integer link_accepts = 0;
+  integer injected_responses = 0;
 
   axi_ucie_bridge #(
     .ADDR_W(ADDR_W), .DATA_W(DATA_W), .ID_W(ID_W)
@@ -81,14 +88,19 @@ module smoke_tb;
     .ADDR_W(ADDR_W), .DATA_W(DATA_W), .ID_W(ID_W), .DEPTH(256)
   ) endpoint (
     .clk, .rst_n, .allow_req,
+    .inject_error, .inject_resp,
     .req_valid, .req_ready, .req_write, .req_id, .req_addr,
     .req_len, .req_size, .req_wdata, .req_wstrb,
     .rsp_valid, .rsp_ready, .rsp_write, .rsp_id, .rsp_resp, .rsp_rdata
   );
 
-  always @(posedge clk)
-    if (rst_n && req_valid && req_ready)
+  always @(posedge clk) begin
+    if (rst_n && req_valid && req_ready) begin
       link_accepts <= link_accepts + 1;
+      if (inject_error)
+        injected_responses <= injected_responses + 1;
+    end
+  end
 
   task automatic fail(input string msg);
     begin
@@ -173,7 +185,7 @@ module smoke_tb;
         fail($sformatf("RRESP mismatch exp=%0b got=%0b", expected_resp, rresp));
       if (!rlast)
         fail("RLAST was not asserted");
-      if ((expected_resp == 2'b00) && (rdata !== expected_data))
+      if ((expected_resp == RESP_OKAY) && (rdata !== expected_data))
         fail($sformatf("RDATA mismatch exp=%h got=%h", expected_data, rdata));
 
       repeat (2) @(posedge clk);
@@ -191,14 +203,16 @@ module smoke_tb;
     arid = '0; araddr = '0; arlen = '0; arsize = '0; arburst = '0; arvalid = 1'b0;
     rready = 1'b0;
     allow_req = 1'b1;
+    inject_error = 1'b0;
+    inject_resp = RESP_OKAY;
 
     repeat (4) @(posedge clk);
     @(negedge clk);
     rst_n = 1'b1;
 
     $display("TEST: write/read with response backpressure");
-    axi_write(32'h0000_0020, 64'hDEAD_BEEF_CAFE_BABE, 4'h3, 8'd0, 2'b00);
-    axi_read (32'h0000_0020, 4'h5, 8'd0, 2'b00, 64'hDEAD_BEEF_CAFE_BABE);
+    axi_write(32'h0000_0020, 64'hDEAD_BEEF_CAFE_BABE, 4'h3, 8'd0, RESP_OKAY);
+    axi_read (32'h0000_0020, 4'h5, 8'd0, RESP_OKAY, 64'hDEAD_BEEF_CAFE_BABE);
 
     $display("TEST: link request stall");
     allow_req = 1'b0;
@@ -211,22 +225,48 @@ module smoke_tb;
         allow_req = 1'b1;
       end
       begin
-        axi_write(32'h0000_0040, 64'h0123_4567_89AB_CDEF, 4'h7, 8'd0, 2'b00);
+        axi_write(32'h0000_0040, 64'h0123_4567_89AB_CDEF, 4'h7, 8'd0, RESP_OKAY);
       end
     join
-    axi_read(32'h0000_0040, 4'h8, 8'd0, 2'b00, 64'h0123_4567_89AB_CDEF);
+    axi_read(32'h0000_0040, 4'h8, 8'd0, RESP_OKAY, 64'h0123_4567_89AB_CDEF);
 
     $display("TEST: unsupported burst rejected locally");
     begin : burst_reject_check
       integer before_count;
       before_count = link_accepts;
-      axi_write(32'h0000_0060, 64'hA5A5_A5A5_A5A5_A5A5, 4'h9, 8'd1, 2'b10);
+      axi_write(32'h0000_0060, 64'hA5A5_A5A5_A5A5_A5A5, 4'h9, 8'd1, RESP_SLVERR);
       if (link_accepts != before_count)
         fail("unsupported write burst reached the link");
-      axi_read(32'h0000_0060, 4'hA, 8'd2, 2'b10, '0);
+      axi_read(32'h0000_0060, 4'hA, 8'd2, RESP_SLVERR, '0);
       if (link_accepts != before_count)
         fail("unsupported read burst reached the link");
     end
+
+    $display("TEST: link response error propagation");
+    axi_write(32'h0000_0080, 64'h1111_2222_3333_4444, 4'h1, 8'd0, RESP_OKAY);
+
+    @(negedge clk);
+    inject_error = 1'b1;
+    inject_resp = RESP_SLVERR;
+    axi_write(32'h0000_0080, 64'hAAAA_BBBB_CCCC_DDDD, 4'h2, 8'd0, RESP_SLVERR);
+    @(negedge clk);
+    inject_error = 1'b0;
+    inject_resp = RESP_OKAY;
+
+    // The verification endpoint defines injected write errors as rejected
+    // operations, so the prior value must still be present.
+    axi_read(32'h0000_0080, 4'h4, 8'd0, RESP_OKAY, 64'h1111_2222_3333_4444);
+
+    @(negedge clk);
+    inject_error = 1'b1;
+    inject_resp = RESP_DECERR;
+    axi_read(32'h0000_0080, 4'h6, 8'd0, RESP_DECERR, '0);
+    @(negedge clk);
+    inject_error = 1'b0;
+    inject_resp = RESP_OKAY;
+
+    if (injected_responses != 2)
+      fail($sformatf("expected 2 injected responses, got %0d", injected_responses));
 
     $display("TEST: reset recovery");
     @(negedge clk);
@@ -234,10 +274,10 @@ module smoke_tb;
     repeat (3) @(posedge clk);
     @(negedge clk);
     rst_n = 1'b1;
-    axi_read(32'h0000_0020, 4'hB, 8'd0, 2'b00, 64'hDEAD_BEEF_CAFE_BABE);
+    axi_read(32'h0000_0020, 4'hB, 8'd0, RESP_OKAY, 64'hDEAD_BEEF_CAFE_BABE);
 
     if (errors == 0) begin
-      $display("SMOKE PASS: %0d link requests accepted", link_accepts);
+      $display("SMOKE PASS: %0d link requests accepted, %0d injected error responses", link_accepts, injected_responses);
       $finish;
     end else begin
       $fatal(1, "SMOKE FAIL: %0d error(s)", errors);
