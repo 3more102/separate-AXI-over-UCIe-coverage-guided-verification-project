@@ -37,7 +37,7 @@ package axi_ucie_tb_pkg;
       if (kind == AXI_WRITE) {
         data_q.size() == len + 1;
         strb_q.size() == len + 1;
-        foreach (strb_q[i]) strb_q[i] == '1;
+        foreach (strb_q[i]) strb_q[i] != '0;
       } else {
         data_q.size() == 0;
         strb_q.size() == 0;
@@ -293,6 +293,7 @@ package axi_ucie_tb_pkg;
     bit [7:0] sample_len;
     bit [1:0] sample_burst;
     bit [2:0] sample_size;
+    bit       sample_partial;
 
     covergroup cg;
       option.per_instance = 1;
@@ -315,6 +316,10 @@ package axi_ucie_tb_pkg;
         bins half = {1};
         bins word = {2};
       }
+      cp_partial: coverpoint sample_partial iff (sample_kind == AXI_WRITE) {
+        bins full    = {0};
+        bins partial = {1};
+      }
       kind_x_len_x_burst: cross cp_kind, cp_len, cp_burst;
     endgroup
 
@@ -324,10 +329,16 @@ package axi_ucie_tb_pkg;
     endfunction
 
     function void write(axi_txn t);
-      sample_kind  = t.kind;
-      sample_len   = t.len;
-      sample_burst = t.burst;
-      sample_size  = t.size;
+      sample_kind    = t.kind;
+      sample_len     = t.len;
+      sample_burst   = t.burst;
+      sample_size    = t.size;
+      sample_partial = 1'b0;
+      if (t.kind == AXI_WRITE) begin
+        foreach (t.strb_q[i])
+          if (t.strb_q[i] != '1)
+            sample_partial = 1'b1;
+      end
       cg.sample();
     endfunction
   endclass
@@ -407,7 +418,8 @@ package axi_ucie_tb_pkg;
     task body();
       axi_txn tr;
       int count = 100;
-      bit bias_long, bias_medium, bias_fixed, bias_incr, bias_read, bias_write;
+      bit bias_long, bias_medium, bias_fixed, bias_incr;
+      bit bias_read, bias_write, bias_partial;
       int tmp;
 
       void'($value$plusargs("TXN_COUNT=%d", count));
@@ -422,6 +434,8 @@ package axi_ucie_tb_pkg;
       bias_read   = $value$plusargs("BIAS_READ=%d", tmp)   && (tmp != 0);
       tmp = 0;
       bias_write  = $value$plusargs("BIAS_WRITE=%d", tmp)  && (tmp != 0);
+      tmp = 0;
+      bias_partial = $value$plusargs("BIAS_PARTIAL=%d", tmp) && (tmp != 0);
 
       repeat (count) begin
         tr = axi_txn::type_id::create("cov_tr");
@@ -431,8 +445,10 @@ package axi_ucie_tb_pkg;
           else if (bias_medium) len inside {[4:7]};
           if (bias_fixed && !bias_incr) burst == 2'b00;
           if (bias_incr && !bias_fixed) burst == 2'b01;
-          if (bias_read && !bias_write) kind == AXI_READ;
-          if (bias_write && !bias_read) kind == AXI_WRITE;
+          if (bias_partial) kind == AXI_WRITE;
+          else if (bias_read && !bias_write) kind == AXI_READ;
+          else if (bias_write && !bias_read) kind == AXI_WRITE;
+          if (bias_partial) strb_q[0] != '1;
         })
           \`uvm_fatal("RAND", "axi_cov_guided_seq randomization failed")
         finish_item(tr);
