@@ -34,12 +34,20 @@ module axi_memory_slave #(
   logic rlast_q;
   logic rvalid_q;
 
+  function automatic [ADDR_W-1:0] data_bus_base(input logic [ADDR_W-1:0] addr);
+    begin
+      data_bus_base = addr - (addr % STRB_W);
+    end
+  endfunction
+
   function automatic [DATA_W-1:0] read_word(input logic [ADDR_W-1:0] addr);
+    logic [ADDR_W-1:0] base_addr;
     int i;
     begin
+      base_addr = data_bus_base(addr);
       read_word = '0;
       for (i = 0; i < STRB_W; i++)
-        read_word[i*8 +: 8] = mem[(addr + i) % MEM_BYTES];
+        read_word[i*8 +: 8] = mem[(base_addr + i) % MEM_BYTES];
     end
   endfunction
 
@@ -92,8 +100,11 @@ module axi_memory_slave #(
 
       if (axi.wvalid && axi.wready) begin
         for (i = 0; i < STRB_W; i++) begin
+          // WSTRB indexes byte lanes of the aligned data bus word. For a
+          // narrow transfer, AWADDR identifies the transfer byte address,
+          // so lane i maps to aligned_base+i rather than wr_addr+i.
           if (axi.wstrb[i])
-            mem[(wr_addr + i) % MEM_BYTES] <= axi.wdata[i*8 +: 8];
+            mem[(data_bus_base(wr_addr) + i) % MEM_BYTES] <= axi.wdata[i*8 +: 8];
         end
 
         if (axi.wlast || (wr_beats_left == 9'd1)) begin
