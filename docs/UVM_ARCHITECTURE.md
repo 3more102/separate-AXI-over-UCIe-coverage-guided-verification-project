@@ -36,9 +36,25 @@ The sequence recognizes:
 - +BIAS_INCR=1
 - +BIAS_READ=1
 - +BIAS_WRITE=1
+- +BIAS_PARTIAL=1
 - +TXN_COUNT=N
 
 The helper in scripts/coverage_feedback.py converts neutral JSON bin counts into these plusargs.
+
+The coverage subscriber also keeps explicit hit counters that mirror the named
+operation, length, burst, full-width size, and full-vs-partial strobe bins. The
+guided test serializes them to `build/uvm_coverage.json` by default; override
+the path with `+COVERAGE_JSON=<path>`.
+
+A two-pass feedback run is available with:
+
+    make -C sim questa-loop UVM_SEED=42 UVM_TXN_COUNT=100
+
+The first run exports the counters, `feedback-uvm` maps uncovered bins
+(including `strobe.partial`) to bias plusargs, and a second guided run is
+launched only when mapped holes remain. These counters are portable feedback
+data; they are not simulator-native UCDB coverage and do not yet include cross
+bins.
 
 ## Important boundary
 

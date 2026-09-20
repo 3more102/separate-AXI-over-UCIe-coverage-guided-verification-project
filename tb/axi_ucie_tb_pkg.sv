@@ -343,6 +343,20 @@ package axi_ucie_tb_pkg;
     bit [2:0] sample_size;
     bit sample_partial;
 
+    // Portable counters mirror the named bins consumed by coverage_feedback.py.
+    // They complement, but do not replace, simulator-native coverage databases.
+    int unsigned hit_kind_read;
+    int unsigned hit_kind_write;
+    int unsigned hit_len_single;
+    int unsigned hit_len_short;
+    int unsigned hit_len_medium;
+    int unsigned hit_len_long;
+    int unsigned hit_burst_fixed;
+    int unsigned hit_burst_incr;
+    int unsigned hit_size_full_width;
+    int unsigned hit_strobe_full;
+    int unsigned hit_strobe_partial;
+
     covergroup cg;
       option.per_instance = 1;
       cp_kind: coverpoint sample_kind {
@@ -372,6 +386,17 @@ package axi_ucie_tb_pkg;
     function new(string name, uvm_component parent);
       super.new(name, parent);
       cg = new();
+      hit_kind_read        = 0;
+      hit_kind_write       = 0;
+      hit_len_single       = 0;
+      hit_len_short        = 0;
+      hit_len_medium       = 0;
+      hit_len_long         = 0;
+      hit_burst_fixed      = 0;
+      hit_burst_incr       = 0;
+      hit_size_full_width  = 0;
+      hit_strobe_full      = 0;
+      hit_strobe_partial   = 0;
     endfunction
 
     function void write(axi_txn t);
@@ -386,7 +411,58 @@ package axi_ucie_tb_pkg;
             sample_partial = 1'b1;
       end
       cg.sample();
+
+      if (t.kind == AXI_READ) hit_kind_read++;
+      else                    hit_kind_write++;
+
+      if (t.len == 0)          hit_len_single++;
+      else if (t.len <= 3)     hit_len_short++;
+      else if (t.len <= 7)     hit_len_medium++;
+      else                     hit_len_long++;
+
+      if (t.burst == 2'b00) hit_burst_fixed++;
+      else if (t.burst == 2'b01) hit_burst_incr++;
+
+      if (t.size == AXI_FULL_SIZE) hit_size_full_width++;
+
+      if (t.kind == AXI_WRITE) begin
+        if (sample_partial) hit_strobe_partial++;
+        else                hit_strobe_full++;
+      end
     endfunction
+
+    task write_json();
+      string path;
+      int fd;
+
+      path = "../build/uvm_coverage.json";
+      void'($value$plusargs("COVERAGE_JSON=%s", path));
+      fd = $fopen(path, "w");
+      if (fd == 0) begin
+        `uvm_error("COVJSON", $sformatf("Could not open coverage JSON path: %s", path))
+        return;
+      end
+
+      $fdisplay(fd, "{");
+      $fdisplay(fd, "  \"source\": \"uvm\",");
+      $fdisplay(fd, "  \"schema_version\": 1,");
+      $fdisplay(fd, "  \"bins\": {");
+      $fdisplay(fd, "    \"kind.read\": %0d,", hit_kind_read);
+      $fdisplay(fd, "    \"kind.write\": %0d,", hit_kind_write);
+      $fdisplay(fd, "    \"len.single\": %0d,", hit_len_single);
+      $fdisplay(fd, "    \"len.short\": %0d,", hit_len_short);
+      $fdisplay(fd, "    \"len.medium\": %0d,", hit_len_medium);
+      $fdisplay(fd, "    \"len.long\": %0d,", hit_len_long);
+      $fdisplay(fd, "    \"burst.fixed\": %0d,", hit_burst_fixed);
+      $fdisplay(fd, "    \"burst.incr\": %0d,", hit_burst_incr);
+      $fdisplay(fd, "    \"size.full_width\": %0d,", hit_size_full_width);
+      $fdisplay(fd, "    \"strobe.full\": %0d,", hit_strobe_full);
+      $fdisplay(fd, "    \"strobe.partial\": %0d", hit_strobe_partial);
+      $fdisplay(fd, "  }");
+      $fdisplay(fd, "}");
+      $fclose(fd);
+      `uvm_info("COVJSON", $sformatf("Wrote neutral coverage JSON to %s", path), UVM_LOW)
+    endtask
   endclass
 
   class axi_ucie_env extends uvm_env;
@@ -535,6 +611,9 @@ package axi_ucie_tb_pkg;
       phase.raise_objection(this);
       phase.phase_done.set_drain_time(this, 100ns);
       seq.start(env.seqr);
+      // Allow the source monitor/subscriber to publish the final completed item.
+      repeat (2) @(posedge env.src_vif.aclk);
+      env.cov.write_json();
       phase.drop_objection(this);
     endtask
   endclass
