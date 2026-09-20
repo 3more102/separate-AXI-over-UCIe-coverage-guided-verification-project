@@ -12,6 +12,14 @@ module axi_memory_slave #(
 
   byte unsigned mem [0:MEM_BYTES-1];
 
+  // AXI byte lanes are relative to the aligned data-bus word, not directly
+  // relative to AxADDR. This matters for legal narrow transfers.
+  function automatic [ADDR_W-1:0] bus_word_base(
+    input logic [ADDR_W-1:0] addr
+  );
+    bus_word_base = addr - (addr % STRB_W);
+  endfunction
+
   logic wr_active;
   logic [ID_W-1:0] wr_id;
   logic [ADDR_W-1:0] wr_addr;
@@ -39,7 +47,8 @@ module axi_memory_slave #(
     begin
       read_word = '0;
       for (i = 0; i < STRB_W; i++)
-        read_word[i*8 +: 8] = mem[(addr + i) % MEM_BYTES];
+        read_word[i*8 +: 8] =
+            mem[(bus_word_base(addr) + i) % MEM_BYTES];
     end
   endfunction
 
@@ -93,7 +102,8 @@ module axi_memory_slave #(
       if (axi.wvalid && axi.wready) begin
         for (i = 0; i < STRB_W; i++) begin
           if (axi.wstrb[i])
-            mem[(wr_addr + i) % MEM_BYTES] <= axi.wdata[i*8 +: 8];
+            mem[(bus_word_base(wr_addr) + i) % MEM_BYTES] <=
+                axi.wdata[i*8 +: 8];
         end
 
         if (axi.wlast || (wr_beats_left == 9'd1)) begin
