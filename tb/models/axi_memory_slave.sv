@@ -66,7 +66,6 @@ module axi_memory_slave #(
   assign axi.rvalid  = rvalid_q;
 
   integer i;
-  logic [ADDR_W-1:0] wr_base_addr;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       wr_active      <= 1'b0;
@@ -90,7 +89,6 @@ module axi_memory_slave #(
       rresp_q        <= 2'b00;
       rlast_q        <= 1'b0;
       rvalid_q       <= 1'b0;
-      wr_base_addr   <= '0;
     end else begin
       if (axi.awvalid && axi.awready) begin
         wr_active     <= 1'b1;
@@ -102,10 +100,10 @@ module axi_memory_slave #(
       end
 
       if (axi.wvalid && axi.wready) begin
-        wr_base_addr = aligned_bus_addr(wr_addr);
         for (i = 0; i < STRB_W; i++) begin
           if (axi.wstrb[i])
-            mem[(wr_base_addr + i) % MEM_BYTES] <= axi.wdata[i*8 +: 8];
+            mem[(aligned_bus_addr(wr_addr) + i) % MEM_BYTES]
+              <= axi.wdata[i*8 +: 8];
         end
 
         if (axi.wlast || (wr_beats_left == 9'd1)) begin
