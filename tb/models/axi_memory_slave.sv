@@ -8,7 +8,8 @@ module axi_memory_slave #(
   input logic rst_n,
   axi_if.slave axi
 );
-  localparam int STRB_W = DATA_W/8;
+  localparam int STRB_W   = DATA_W/8;
+  localparam int ADDR_LSB = $clog2(STRB_W);
 
   byte unsigned mem [0:MEM_BYTES-1];
 
@@ -34,12 +35,20 @@ module axi_memory_slave #(
   logic rlast_q;
   logic rvalid_q;
 
+  function automatic [ADDR_W-1:0] aligned_bus_addr(
+    input logic [ADDR_W-1:0] addr
+  );
+    aligned_bus_addr = (addr >> ADDR_LSB) << ADDR_LSB;
+  endfunction
+
   function automatic [DATA_W-1:0] read_word(input logic [ADDR_W-1:0] addr);
     int i;
+    logic [ADDR_W-1:0] base_addr;
     begin
       read_word = '0;
+      base_addr = aligned_bus_addr(addr);
       for (i = 0; i < STRB_W; i++)
-        read_word[i*8 +: 8] = mem[(addr + i) % MEM_BYTES];
+        read_word[i*8 +: 8] = mem[(base_addr + i) % MEM_BYTES];
     end
   endfunction
 
@@ -57,6 +66,7 @@ module axi_memory_slave #(
   assign axi.rvalid  = rvalid_q;
 
   integer i;
+  logic [ADDR_W-1:0] wr_base_addr;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       wr_active      <= 1'b0;
@@ -80,6 +90,7 @@ module axi_memory_slave #(
       rresp_q        <= 2'b00;
       rlast_q        <= 1'b0;
       rvalid_q       <= 1'b0;
+      wr_base_addr   <= '0;
     end else begin
       if (axi.awvalid && axi.awready) begin
         wr_active     <= 1'b1;
@@ -91,9 +102,10 @@ module axi_memory_slave #(
       end
 
       if (axi.wvalid && axi.wready) begin
+        wr_base_addr = aligned_bus_addr(wr_addr);
         for (i = 0; i < STRB_W; i++) begin
           if (axi.wstrb[i])
-            mem[(wr_addr + i) % MEM_BYTES] <= axi.wdata[i*8 +: 8];
+            mem[(wr_base_addr + i) % MEM_BYTES] <= axi.wdata[i*8 +: 8];
         end
 
         if (axi.wlast || (wr_beats_left == 9'd1)) begin
@@ -124,10 +136,10 @@ module axi_memory_slave #(
       end
 
       if (rd_active && !rvalid_q) begin
-        rid_q   <= rd_id;
-        rdata_q <= read_word(rd_addr);
-        rresp_q <= 2'b00;
-        rlast_q <= (rd_beats_left == 9'd1);
+        rid_q    <= rd_id;
+        rdata_q  <= read_word(rd_addr);
+        rresp_q  <= 2'b00;
+        rlast_q  <= (rd_beats_left == 9'd1);
         rvalid_q <= 1'b1;
       end
 
