@@ -32,7 +32,7 @@ The repository currently contains:
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
 | Partial write | Packetized RTL smoke + abstract model + UVM guided WSTRB stimulus/coverage | Cross with burst length and link stalls |
-| Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
+| Transfer size | Narrow-lane open-source smoke + naturally aligned byte/halfword/full-width UVM stimulus/coverage | Unaligned transfers and boundary-focused cases |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
 | Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
@@ -40,7 +40,7 @@ The repository currently contains:
 
 ## UVM coverage layer
 
-The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, full-vs-partial write strobes, and the operation x length x burst cross. Partial strobes are generated within full-width UVM writes. Narrow byte/halfword lane behavior is exercised by the separate open-source narrow-lane smoke, but narrow-transfer randomization is not yet enabled in the UVM sequence. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, BIAS_WRITE, and BIAS_PARTIAL plusargs.
+The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, byte/halfword/full-width transfer size, legal full-vs-partial write strobes, the operation x length x burst cross, and the operation x size x burst cross. Narrow transfers are naturally aligned and use lane-correct WSTRB masks. BIAS_PARTIAL intentionally keeps writes full-width so it always removes at least one legal byte lane; BIAS_NARROW targets byte/halfword traffic separately. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, BIAS_WRITE, BIAS_PARTIAL, and BIAS_NARROW plusargs.
 
 The next UVM expansion should cover address
 alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
@@ -73,7 +73,7 @@ read data ordering.
 
 ## Next implementation milestone
 
-1. Packetize full AXI INCR/FIXED/WRAP bursts and add legal narrow-transfer lane mapping.
+1. Packetize full AXI INCR/FIXED/WRAP bursts and carry the proven narrow-transfer lane mapping into the packetized path.
 2. Add configurable multiple outstanding transactions.
 3. Add ID-aware reorder checking.
 4. Replace the reference channel tunnel in the UVM top with the packetized AXI-over-UCIe bridge plus a dedicated link agent.
