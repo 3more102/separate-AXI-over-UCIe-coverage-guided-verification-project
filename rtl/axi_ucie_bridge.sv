@@ -80,6 +80,8 @@ module axi_ucie_bridge #(
   logic [1:0]          ar_burst_q;
 
   logic                inflight;
+  logic                inflight_write;
+  logic [ID_W-1:0]     inflight_id;
 
   logic                write_drop_active;
   logic [8:0]          write_drop_left;
@@ -99,8 +101,7 @@ module axi_ucie_bridge #(
 
   assign link_rsp_ready =
       rst_n && inflight &&
-      ((link_rsp_write && !s_axi_bvalid) ||
-       (!link_rsp_write && !s_axi_rvalid));
+      (inflight_write ? !s_axi_bvalid : !s_axi_rvalid);
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -108,6 +109,8 @@ module axi_ucie_bridge #(
       w_full           <= 1'b0;
       ar_full          <= 1'b0;
       inflight         <= 1'b0;
+      inflight_write   <= 1'b0;
+      inflight_id      <= '0;
       write_drop_active <= 1'b0;
       write_drop_left   <= '0;
       write_error_id    <= '0;
@@ -192,20 +195,28 @@ module axi_ucie_bridge #(
       end
 
       if (link_req_valid && link_req_ready) begin
-        link_req_valid <= 1'b0;
-        inflight       <= 1'b1;
+        link_req_valid  <= 1'b0;
+        inflight        <= 1'b1;
+        inflight_write  <= link_req_write;
+        inflight_id     <= link_req_id;
       end
 
       if (link_rsp_valid && link_rsp_ready) begin
         inflight <= 1'b0;
-        if (link_rsp_write) begin
-          s_axi_bid    <= link_rsp_id;
-          s_axi_bresp  <= link_rsp_resp;
+        if (inflight_write) begin
+          s_axi_bid    <= inflight_id;
+          s_axi_bresp  <= ((link_rsp_write != inflight_write) ||
+                           (link_rsp_id != inflight_id))
+                          ? RESP_SLVERR : link_rsp_resp;
           s_axi_bvalid <= 1'b1;
         end else begin
-          s_axi_rid    <= link_rsp_id;
-          s_axi_rdata  <= link_rsp_rdata;
-          s_axi_rresp  <= link_rsp_resp;
+          s_axi_rid    <= inflight_id;
+          s_axi_rdata  <= ((link_rsp_write != inflight_write) ||
+                           (link_rsp_id != inflight_id))
+                          ? '0 : link_rsp_rdata;
+          s_axi_rresp  <= ((link_rsp_write != inflight_write) ||
+                           (link_rsp_id != inflight_id))
+                          ? RESP_SLVERR : link_rsp_resp;
           s_axi_rlast  <= 1'b1;
           s_axi_rvalid <= 1'b1;
         end
