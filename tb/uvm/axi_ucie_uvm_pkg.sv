@@ -229,7 +229,7 @@ package axi_ucie_uvm_pkg;
             `uvm_error("MON_WRITE", "B response observed without captured AW/W")
           tr = axi_txn::type_id::create("write_tr");
           tr.kind  = AXI_WRITE;
-          tr.id    = aw_id_q;
+          tr.id    = vif.bid;
           tr.addr  = aw_addr_q;
           tr.len   = aw_len_q;
           tr.size  = aw_size_q;
@@ -256,7 +256,7 @@ package axi_ucie_uvm_pkg;
             `uvm_error("MON_READ", "R response observed without captured AR")
           tr = axi_txn::type_id::create("read_tr");
           tr.kind  = AXI_READ;
-          tr.id    = ar_id_q;
+          tr.id    = vif.rid;
           tr.addr  = ar_addr_q;
           tr.len   = ar_len_q;
           tr.size  = ar_size_q;
