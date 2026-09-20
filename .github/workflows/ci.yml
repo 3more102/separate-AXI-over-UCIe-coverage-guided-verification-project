@@ -34,5 +34,6 @@ jobs:
           name: verification-artifacts
           path: |
             build/guided_regression.json
+            build/experiment.json
             build/next_bias.json
           if-no-files-found: ignore
