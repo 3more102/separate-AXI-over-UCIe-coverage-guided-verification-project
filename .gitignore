@@ -1,0 +1,14 @@
+work/
+transcript
+vsim.wlf
+*.wlf
+*.ucdb
+*.vcd
+*.fst
+build/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vscode/
+.idea/
+.DS_Store
