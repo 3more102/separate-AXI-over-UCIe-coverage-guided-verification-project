@@ -17,6 +17,8 @@ BIAS_RULES = {
     "kind.read": "BIAS_READ",
     "kind.write": "BIAS_WRITE",
     "strobe.partial": "BIAS_PARTIAL",
+    "size.byte": "BIAS_NARROW",
+    "size.halfword": "BIAS_NARROW",
 }
 
 
