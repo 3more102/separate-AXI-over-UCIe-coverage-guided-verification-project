@@ -36,6 +36,7 @@ class Scenario:
 @dataclass
 class CoverageTracker:
     bins: set[str] = field(default_factory=set)
+    counts: dict[str, int] = field(default_factory=dict)
 
     REQUIRED_BINS = frozenset(
         {
@@ -56,7 +57,9 @@ class CoverageTracker:
     )
 
     def hit(self, *names: str) -> None:
-        self.bins.update(names)
+        for name in names:
+            self.bins.add(name)
+            self.counts[name] = self.counts.get(name, 0) + 1
 
     @property
     def covered(self) -> int:
@@ -72,6 +75,13 @@ class CoverageTracker:
 
     def missing(self) -> list[str]:
         return sorted(self.REQUIRED_BINS - self.bins)
+
+    def as_bin_counts(self) -> dict[str, int]:
+        """Return deterministic required-bin hit counts, including zero-hit bins."""
+        return {
+            name: self.counts.get(name, 0)
+            for name in sorted(self.REQUIRED_BINS)
+        }
 
 
 @dataclass(frozen=True)
