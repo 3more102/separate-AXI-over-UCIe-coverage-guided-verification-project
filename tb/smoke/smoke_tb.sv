@@ -108,7 +108,17 @@ module smoke_tb;
       if (bresp !== expected_resp)
         fail($sformatf("BRESP mismatch exp=%0b got=%0b", expected_resp, bresp));
 
-      repeat (2) @(posedge clk);
+      begin : check_b_stability
+        logic [ID_W-1:0] held_bid;
+        logic [1:0] held_bresp;
+        held_bid = bid;
+        held_bresp = bresp;
+        repeat (2) begin
+          @(posedge clk);
+          if (!bvalid || bid !== held_bid || bresp !== held_bresp)
+            fail("B response changed while BREADY was low");
+        end
+      end
       @(negedge clk);
       bready = 1'b1;
       @(posedge clk);
@@ -274,7 +284,22 @@ module smoke_tb;
       if ((expected_resp == 2'b00) && (rdata !== expected_data))
         fail($sformatf("RDATA mismatch exp=%h got=%h", expected_data, rdata));
 
-      repeat (2) @(posedge clk);
+      begin : check_r_stability
+        logic [ID_W-1:0] held_rid;
+        logic [DATA_W-1:0] held_rdata;
+        logic [1:0] held_rresp;
+        logic held_rlast;
+        held_rid = rid;
+        held_rdata = rdata;
+        held_rresp = rresp;
+        held_rlast = rlast;
+        repeat (2) begin
+          @(posedge clk);
+          if (!rvalid || rid !== held_rid || rdata !== held_rdata ||
+              rresp !== held_rresp || rlast !== held_rlast)
+            fail("R response changed while RREADY was low");
+        end
+      end
       @(negedge clk);
       rready = 1'b1;
       @(posedge clk);
@@ -367,10 +392,33 @@ module smoke_tb;
     $display("TEST: link request stall");
     allow_req = 1'b0;
     fork
-      begin
-        repeat (6) @(posedge clk);
-        if (!req_valid)
-          fail("request did not remain pending during link stall");
+      begin : link_stall_stability
+        logic held_write;
+        logic [ID_W-1:0] held_id;
+        logic [ADDR_W-1:0] held_addr;
+        logic [7:0] held_len;
+        logic [2:0] held_size;
+        logic [DATA_W-1:0] held_wdata;
+        logic [DATA_W/8-1:0] held_wstrb;
+
+        wait (req_valid === 1'b1);
+        held_write = req_write;
+        held_id = req_id;
+        held_addr = req_addr;
+        held_len = req_len;
+        held_size = req_size;
+        held_wdata = req_wdata;
+        held_wstrb = req_wstrb;
+
+        repeat (6) begin
+          @(posedge clk);
+          if (!req_valid)
+            fail("request did not remain pending during link stall");
+          if (req_write !== held_write || req_id !== held_id || req_addr !== held_addr ||
+              req_len !== held_len || req_size !== held_size ||
+              req_wdata !== held_wdata || req_wstrb !== held_wstrb)
+            fail("link request payload changed while stalled");
+        end
         @(negedge clk);
         allow_req = 1'b1;
       end
