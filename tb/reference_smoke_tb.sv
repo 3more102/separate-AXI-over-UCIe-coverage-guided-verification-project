@@ -195,8 +195,9 @@ module reference_smoke_tb;
     if (errors == 0) begin
       $display("REFERENCE SMOKE PASS");
       $finish;
+    end else begin
+      $fatal(1, "REFERENCE SMOKE FAIL: %0d error(s)", errors);
     end
-    $fatal(1, "REFERENCE SMOKE FAIL: %0d error(s)", errors);
   end
 
   initial begin
