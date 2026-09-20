@@ -27,12 +27,9 @@ module ucie_mem_endpoint #(
 );
 
   localparam int BYTE_LANES = DATA_W / 8;
-  localparam int ADDR_LSB   = $clog2(BYTE_LANES);
-  localparam int INDEX_W    = $clog2(DEPTH);
+  localparam int MEM_BYTES  = DEPTH * BYTE_LANES;
 
-  logic [DATA_W-1:0] mem [0:DEPTH-1];
-  wire [INDEX_W-1:0] req_index = req_addr[ADDR_LSB +: INDEX_W];
-
+  byte unsigned mem [0:MEM_BYTES-1];
   integer lane;
 
   assign req_ready = rst_n && allow_req && !rsp_valid;
@@ -57,15 +54,21 @@ module ucie_mem_endpoint #(
         if (req_write) begin
           for (lane = 0; lane < BYTE_LANES; lane = lane + 1)
             if (req_wstrb[lane])
-              mem[req_index][8*lane +: 8] <= req_wdata[8*lane +: 8];
+              mem[(req_addr + lane) % MEM_BYTES] <=
+                  req_wdata[8*lane +: 8];
           rsp_rdata <= '0;
         end else begin
-          rsp_rdata <= mem[req_index];
+          for (lane = 0; lane < BYTE_LANES; lane = lane + 1)
+            rsp_rdata[8*lane +: 8] <=
+                mem[(req_addr + lane) % MEM_BYTES];
         end
       end
     end
   end
 
+  // The bridge emits one link request per AXI beat, so LEN is diagnostic
+  // metadata here. SIZE is carried for observability; byte strobes determine
+  // which write lanes are updated by this simple memory endpoint.
   logic _unused;
   always_comb _unused = ^{req_len, req_size};
 
