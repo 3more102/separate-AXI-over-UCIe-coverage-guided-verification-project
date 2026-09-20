@@ -82,7 +82,7 @@ Coverage-guided UVM run, after choosing bias knobs:
 
 ## Current boundary
 
-The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel now exercises multi-beat AXI channel transport and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
+The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel exercises multi-beat AXI channel transport, naturally aligned byte/halfword/full-width transfers, lane-correct write strobes, partial-write targeting, and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, unaligned transfers, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
 
 See docs/VERIFICATION_PLAN.md for the implementation matrix and next steps.
 See docs/EXPERIMENT.md for the paired experiment methodology and interpretation limits.
