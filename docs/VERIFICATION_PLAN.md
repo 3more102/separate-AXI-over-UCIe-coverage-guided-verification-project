@@ -13,6 +13,7 @@ The repository currently contains:
 - A single-beat AXI-to-link bridge and a link-side memory endpoint.
 - AXI interface and protocol-stability assertions.
 - An open-source SystemVerilog smoke test with link and response backpressure.
+- Link-side response injection in the packetized smoke path, checking SLVERR/DECERR propagation, response IDs, and rejected-write side effects in the reference endpoint.
 - Explicit rejection of unsupported multi-beat requests.
 - A deterministic Python transaction/link model.
 - Coverage-guided scenario selection using a UCB1 planner.
@@ -34,7 +35,7 @@ The repository currently contains:
 | Partial write | Abstract model | RTL smoke and UVM sequence |
 | Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
-| Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
+| Link errors | Abstract CRC/timeout retry model + packetized SLVERR/DECERR injection/propagation smoke | CRC/timeout retry at RTL/UVM link layer |
 | Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
 | Assertions | Ready/valid stability | Ordering, burst legality, liveness |
 
