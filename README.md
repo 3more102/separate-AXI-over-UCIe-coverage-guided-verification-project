@@ -14,6 +14,7 @@ UCIe PHY/Adapter compliance.
 - Local SLVERR for unsupported multi-beat requests.
 - AXI ready/valid stability assertions.
 - Deterministic abstract transport model with retry/error scenarios.
+- Packetized smoke-path fault injection proving SLVERR/DECERR propagation and response-ID preservation.
 - Coverage-guided UCB1 planner.
 - Coverage-hole to next-run plusarg bias helper.
 - UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, covergroups, and a coverage-guided sequence.
