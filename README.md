@@ -43,6 +43,7 @@ Open-source RTL checks:
 
     make -C sim lint
     make -C sim smoke
+    make -C sim response-integrity
     make -C sim reference-smoke
 
 Python tests:
