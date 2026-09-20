@@ -1,6 +1,6 @@
 package axi_ucie_tb_pkg;
   import uvm_pkg::*;
-  \`include "uvm_macros.svh"
+  `include "uvm_macros.svh"
 
   parameter int AXI_ID_W   = 4;
   parameter int AXI_ADDR_W = 32;
@@ -40,17 +40,17 @@ package axi_ucie_tb_pkg;
       }
     }
 
-    \`uvm_object_utils_begin(axi_txn)
-      \`uvm_field_enum(axi_kind_e, kind, UVM_ALL_ON)
-      \`uvm_field_int(id, UVM_ALL_ON)
-      \`uvm_field_int(addr, UVM_ALL_ON)
-      \`uvm_field_int(len, UVM_ALL_ON)
-      \`uvm_field_int(size, UVM_ALL_ON)
-      \`uvm_field_int(burst, UVM_ALL_ON)
-      \`uvm_field_queue_int(data_q, UVM_ALL_ON)
-      \`uvm_field_queue_int(strb_q, UVM_ALL_ON)
-      \`uvm_field_queue_int(resp_q, UVM_ALL_ON)
-    \`uvm_object_utils_end
+    `uvm_object_utils_begin(axi_txn)
+      `uvm_field_enum(axi_kind_e, kind, UVM_ALL_ON)
+      `uvm_field_int(id, UVM_ALL_ON)
+      `uvm_field_int(addr, UVM_ALL_ON)
+      `uvm_field_int(len, UVM_ALL_ON)
+      `uvm_field_int(size, UVM_ALL_ON)
+      `uvm_field_int(burst, UVM_ALL_ON)
+      `uvm_field_queue_int(data_q, UVM_ALL_ON)
+      `uvm_field_queue_int(strb_q, UVM_ALL_ON)
+      `uvm_field_queue_int(resp_q, UVM_ALL_ON)
+    `uvm_object_utils_end
 
     function new(string name="axi_txn");
       super.new(name);
@@ -58,14 +58,14 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_sequencer extends uvm_sequencer #(axi_txn);
-    \`uvm_component_utils(axi_sequencer)
+    `uvm_component_utils(axi_sequencer)
     function new(string name, uvm_component parent);
       super.new(name, parent);
     endfunction
   endclass
 
   class axi_driver extends uvm_driver #(axi_txn);
-    \`uvm_component_utils(axi_driver)
+    `uvm_component_utils(axi_driver)
     axi_vif_t vif;
 
     function new(string name, uvm_component parent);
@@ -75,7 +75,7 @@ package axi_ucie_tb_pkg;
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "vif", vif))
-        \`uvm_fatal("NOVIF", "axi_driver requires vif")
+        `uvm_fatal("NOVIF", "axi_driver requires vif")
     endfunction
 
     task reset_signals();
@@ -109,8 +109,10 @@ package axi_ucie_tb_pkg;
 
       vif.bready <= 1'b1;
       do @(posedge vif.aclk); while (!vif.bvalid);
-      if (vif.bresp != 2'b00)
-        \`uvm_warning("BRESP", $sformatf("Non-OKAY BRESP=%0b id=%0h", vif.bresp, vif.bid))
+      if (vif.bid !== tr.id)
+        `uvm_error("BID", $sformatf("BID mismatch expected=%0h got=%0h", tr.id, vif.bid))
+      if (vif.bresp !== 2'b00)
+        `uvm_error("BRESP", $sformatf("Non-OKAY BRESP=%0b id=%0h", vif.bresp, vif.bid))
       @(posedge vif.aclk);
       vif.bready <= 1'b0;
     endtask
@@ -133,8 +135,12 @@ package axi_ucie_tb_pkg;
       vif.rready <= 1'b1;
       for (i = 0; i < beats; i++) begin
         do @(posedge vif.aclk); while (!vif.rvalid);
+        if (vif.rid !== tr.id)
+          `uvm_error("RID", $sformatf("RID mismatch expected=%0h got=%0h", tr.id, vif.rid))
+        if (vif.rresp !== 2'b00)
+          `uvm_error("RRESP", $sformatf("Non-OKAY RRESP=%0b id=%0h beat=%0d", vif.rresp, vif.rid, i))
         if (vif.rlast !== (i == beats-1))
-          \`uvm_error("RLAST", $sformatf("Unexpected RLAST at beat %0d/%0d", i, beats))
+          `uvm_error("RLAST", $sformatf("Unexpected RLAST at beat %0d/%0d", i, beats))
       end
       @(posedge vif.aclk);
       vif.rready <= 1'b0;
@@ -156,7 +162,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_monitor extends uvm_component;
-    \`uvm_component_utils(axi_monitor)
+    `uvm_component_utils(axi_monitor)
     axi_vif_t vif;
     uvm_analysis_port #(axi_txn) ap;
 
@@ -168,7 +174,7 @@ package axi_ucie_tb_pkg;
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "vif", vif))
-        \`uvm_fatal("NOVIF", "axi_monitor requires vif")
+        `uvm_fatal("NOVIF", "axi_monitor requires vif")
     endfunction
 
     task monitor_writes();
@@ -230,7 +236,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_scoreboard extends uvm_component;
-    \`uvm_component_utils(axi_scoreboard)
+    `uvm_component_utils(axi_scoreboard)
     uvm_tlm_analysis_fifo #(axi_txn) src_fifo;
     uvm_tlm_analysis_fifo #(axi_txn) dst_fifo;
     int unsigned compared;
@@ -270,12 +276,12 @@ package axi_ucie_tb_pkg;
         src_fifo.get(src);
         dst_fifo.get(dst);
         if (!equivalent(src, dst)) begin
-          \`uvm_error("E2E_MISMATCH",
+          `uvm_error("E2E_MISMATCH",
             $sformatf("Source and destination transactions differ\nSRC:\n%s\nDST:\n%s",
                       src.sprint(), dst.sprint()))
         end else begin
           compared++;
-          \`uvm_info("E2E_MATCH",
+          `uvm_info("E2E_MATCH",
             $sformatf("Matched transaction %0d kind=%s id=%0h len=%0d",
                       compared, src.kind.name(), src.id, src.len), UVM_MEDIUM)
         end
@@ -283,8 +289,60 @@ package axi_ucie_tb_pkg;
     endtask
   endclass
 
+  class axi_memory_scoreboard extends uvm_subscriber #(axi_txn);
+    `uvm_component_utils(axi_memory_scoreboard)
+    byte unsigned model_mem [bit [AXI_ADDR_W-1:0]];
+
+    function new(string name, uvm_component parent);
+      super.new(name, parent);
+    endfunction
+
+    function automatic bit [AXI_ADDR_W-1:0] beat_addr(axi_txn t, int beat);
+      if (t.burst == 2'b01)
+        return t.addr + (beat << t.size);
+      return t.addr;
+    endfunction
+
+    function void write(axi_txn t);
+      bit [AXI_ADDR_W-1:0] addr;
+      bit [AXI_ADDR_W-1:0] byte_addr;
+      int beat;
+      int lane;
+
+      if (t.kind == AXI_WRITE) begin
+        if ((t.resp_q.size() == 1) && (t.resp_q[0] == 2'b00)) begin
+          for (beat = 0; beat < t.data_q.size(); beat++) begin
+            addr = beat_addr(t, beat);
+            for (lane = 0; lane < AXI_STRB_W; lane++) begin
+              if (t.strb_q[beat][lane]) begin
+                byte_addr = addr + lane;
+                model_mem[byte_addr] = t.data_q[beat][lane*8 +: 8];
+              end
+            end
+          end
+        end
+      end else begin
+        for (beat = 0; beat < t.data_q.size(); beat++) begin
+          if ((beat < t.resp_q.size()) && (t.resp_q[beat] == 2'b00)) begin
+            addr = beat_addr(t, beat);
+            for (lane = 0; lane < AXI_STRB_W; lane++) begin
+              byte_addr = addr + lane;
+              if (model_mem.exists(byte_addr) &&
+                  (t.data_q[beat][lane*8 +: 8] !== model_mem[byte_addr])) begin
+                `uvm_error("MEM_MISMATCH",
+                  $sformatf("Read mismatch addr=%0h beat=%0d lane=%0d expected=%02h got=%02h",
+                            byte_addr, beat, lane, model_mem[byte_addr],
+                            t.data_q[beat][lane*8 +: 8]))
+              end
+            end
+          end
+        end
+      end
+    endfunction
+  endclass
+
   class axi_coverage extends uvm_subscriber #(axi_txn);
-    \`uvm_component_utils(axi_coverage)
+    `uvm_component_utils(axi_coverage)
     axi_kind_e sample_kind;
     bit [7:0] sample_len;
     bit [1:0] sample_burst;
@@ -329,12 +387,13 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_ucie_env extends uvm_env;
-    \`uvm_component_utils(axi_ucie_env)
+    `uvm_component_utils(axi_ucie_env)
     axi_sequencer seqr;
     axi_driver drv;
     axi_monitor src_mon;
     axi_monitor dst_mon;
     axi_scoreboard sb;
+    axi_memory_scoreboard mem_sb;
     axi_coverage cov;
     axi_vif_t src_vif;
     axi_vif_t dst_vif;
@@ -346,9 +405,9 @@ package axi_ucie_tb_pkg;
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "src_vif", src_vif))
-        \`uvm_fatal("NOVIF", "env requires src_vif")
+        `uvm_fatal("NOVIF", "env requires src_vif")
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "dst_vif", dst_vif))
-        \`uvm_fatal("NOVIF", "env requires dst_vif")
+        `uvm_fatal("NOVIF", "env requires dst_vif")
 
       uvm_config_db#(axi_vif_t)::set(this, "drv",     "vif", src_vif);
       uvm_config_db#(axi_vif_t)::set(this, "src_mon", "vif", src_vif);
@@ -359,6 +418,7 @@ package axi_ucie_tb_pkg;
       src_mon = axi_monitor::type_id::create("src_mon", this);
       dst_mon = axi_monitor::type_id::create("dst_mon", this);
       sb      = axi_scoreboard::type_id::create("sb", this);
+      mem_sb  = axi_memory_scoreboard::type_id::create("mem_sb", this);
       cov     = axi_coverage::type_id::create("cov", this);
     endfunction
 
@@ -367,12 +427,13 @@ package axi_ucie_tb_pkg;
       drv.seq_item_port.connect(seqr.seq_item_export);
       src_mon.ap.connect(sb.src_fifo.analysis_export);
       dst_mon.ap.connect(sb.dst_fifo.analysis_export);
+      src_mon.ap.connect(mem_sb.analysis_export);
       src_mon.ap.connect(cov.analysis_export);
     endfunction
   endclass
 
   class axi_smoke_seq extends uvm_sequence #(axi_txn);
-    \`uvm_object_utils(axi_smoke_seq)
+    `uvm_object_utils(axi_smoke_seq)
     function new(string name="axi_smoke_seq");
       super.new(name);
     endfunction
@@ -388,14 +449,61 @@ package axi_ucie_tb_pkg;
           if ((i % 3) == 0) len == 0;
           else len inside {[1:7]};
         })
-          \`uvm_fatal("RAND", "axi_smoke_seq randomization failed")
+          `uvm_fatal("RAND", "axi_smoke_seq randomization failed")
         finish_item(tr);
       end
     endtask
   endclass
 
+  class axi_memory_semantics_seq extends uvm_sequence #(axi_txn);
+    `uvm_object_utils(axi_memory_semantics_seq)
+    function new(string name="axi_memory_semantics_seq");
+      super.new(name);
+    endfunction
+
+    task body();
+      axi_txn tr;
+
+      tr = axi_txn::type_id::create("incr_write");
+      start_item(tr);
+      tr.kind = AXI_WRITE; tr.id = 4'h1; tr.addr = 32'h0000_0100;
+      tr.len = 8'd3; tr.size = 3'd2; tr.burst = 2'b01;
+      tr.data_q.delete(); tr.strb_q.delete();
+      tr.data_q.push_back(32'h1111_0001); tr.strb_q.push_back('1);
+      tr.data_q.push_back(32'h2222_0002); tr.strb_q.push_back('1);
+      tr.data_q.push_back(32'h3333_0003); tr.strb_q.push_back('1);
+      tr.data_q.push_back(32'h4444_0004); tr.strb_q.push_back('1);
+      finish_item(tr);
+
+      tr = axi_txn::type_id::create("incr_read");
+      start_item(tr);
+      tr.kind = AXI_READ; tr.id = 4'h2; tr.addr = 32'h0000_0100;
+      tr.len = 8'd3; tr.size = 3'd2; tr.burst = 2'b01;
+      tr.data_q.delete(); tr.strb_q.delete();
+      finish_item(tr);
+
+      tr = axi_txn::type_id::create("fixed_write");
+      start_item(tr);
+      tr.kind = AXI_WRITE; tr.id = 4'h3; tr.addr = 32'h0000_0180;
+      tr.len = 8'd3; tr.size = 3'd2; tr.burst = 2'b00;
+      tr.data_q.delete(); tr.strb_q.delete();
+      tr.data_q.push_back(32'hAAAA_0001); tr.strb_q.push_back('1);
+      tr.data_q.push_back(32'hBBBB_0002); tr.strb_q.push_back('1);
+      tr.data_q.push_back(32'hCCCC_0003); tr.strb_q.push_back('1);
+      tr.data_q.push_back(32'hDDDD_0004); tr.strb_q.push_back('1);
+      finish_item(tr);
+
+      tr = axi_txn::type_id::create("fixed_readback");
+      start_item(tr);
+      tr.kind = AXI_READ; tr.id = 4'h4; tr.addr = 32'h0000_0180;
+      tr.len = 8'd0; tr.size = 3'd2; tr.burst = 2'b00;
+      tr.data_q.delete(); tr.strb_q.delete();
+      finish_item(tr);
+    endtask
+  endclass
+
   class axi_cov_guided_seq extends uvm_sequence #(axi_txn);
-    \`uvm_object_utils(axi_cov_guided_seq)
+    `uvm_object_utils(axi_cov_guided_seq)
     function new(string name="axi_cov_guided_seq");
       super.new(name);
     endfunction
@@ -407,6 +515,7 @@ package axi_ucie_tb_pkg;
       int tmp;
 
       void'($value$plusargs("TXN_COUNT=%d", count));
+      tmp = 0;
       bias_long   = $value$plusargs("BIAS_LONG=%d", tmp)   && (tmp != 0);
       tmp = 0;
       bias_medium = $value$plusargs("BIAS_MEDIUM=%d", tmp) && (tmp != 0);
@@ -430,14 +539,14 @@ package axi_ucie_tb_pkg;
           if (bias_read && !bias_write) kind == AXI_READ;
           if (bias_write && !bias_read) kind == AXI_WRITE;
         })
-          \`uvm_fatal("RAND", "axi_cov_guided_seq randomization failed")
+          `uvm_fatal("RAND", "axi_cov_guided_seq randomization failed")
         finish_item(tr);
       end
     endtask
   endclass
 
   class axi_ucie_smoke_test extends uvm_test;
-    \`uvm_component_utils(axi_ucie_smoke_test)
+    `uvm_component_utils(axi_ucie_smoke_test)
     axi_ucie_env env;
     function new(string name, uvm_component parent);
       super.new(name, parent);
@@ -455,8 +564,27 @@ package axi_ucie_tb_pkg;
     endtask
   endclass
 
+  class axi_ucie_memory_semantics_test extends uvm_test;
+    `uvm_component_utils(axi_ucie_memory_semantics_test)
+    axi_ucie_env env;
+    function new(string name, uvm_component parent);
+      super.new(name, parent);
+    endfunction
+    function void build_phase(uvm_phase phase);
+      super.build_phase(phase);
+      env = axi_ucie_env::type_id::create("env", this);
+    endfunction
+    task run_phase(uvm_phase phase);
+      axi_memory_semantics_seq seq = axi_memory_semantics_seq::type_id::create("seq");
+      phase.raise_objection(this);
+      phase.phase_done.set_drain_time(this, 100ns);
+      seq.start(env.seqr);
+      phase.drop_objection(this);
+    endtask
+  endclass
+
   class axi_ucie_cov_guided_test extends uvm_test;
-    \`uvm_component_utils(axi_ucie_cov_guided_test)
+    `uvm_component_utils(axi_ucie_cov_guided_test)
     axi_ucie_env env;
     function new(string name, uvm_component parent);
       super.new(name, parent);
