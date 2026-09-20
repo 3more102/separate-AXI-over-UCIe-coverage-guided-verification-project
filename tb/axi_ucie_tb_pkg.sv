@@ -25,9 +25,8 @@ package axi_ucie_tb_pkg;
          bit [1:0] resp_q[$];
 
     constraint c_len   { len inside {[0:15]}; }
-    // Keep M0 traffic full-width: the current memory model does not yet
-    // implement AXI narrow-transfer lane placement/strobe semantics.
-    constraint c_size  { size == AXI_FULL_SIZE; }
+    // Legal AXI transfer sizes from one byte through the full data-bus width.
+    constraint c_size  { size inside {[0:AXI_FULL_SIZE]}; }
     constraint c_burst { burst inside {2'b00, 2'b01}; }
     constraint c_addr  {
       addr inside {[0:3840]};
@@ -349,6 +348,7 @@ package axi_ucie_tb_pkg;
         bins incr  = {2'b01};
       }
       cp_size: coverpoint sample_size {
+        bins narrow[]   = {[0:AXI_FULL_SIZE-1]};
         bins full_width = {AXI_FULL_SIZE};
       }
       kind_x_len_x_burst: cross cp_kind, cp_len, cp_burst;
@@ -444,9 +444,11 @@ package axi_ucie_tb_pkg;
       axi_txn tr;
       int count = 100;
       bit bias_long, bias_medium, bias_fixed, bias_incr, bias_read, bias_write;
+      bit bias_narrow, bias_full;
       int tmp;
 
       void'($value$plusargs("TXN_COUNT=%d", count));
+      tmp = 0;
       bias_long   = $value$plusargs("BIAS_LONG=%d", tmp)   && (tmp != 0);
       tmp = 0;
       bias_medium = $value$plusargs("BIAS_MEDIUM=%d", tmp) && (tmp != 0);
@@ -458,6 +460,10 @@ package axi_ucie_tb_pkg;
       bias_read   = $value$plusargs("BIAS_READ=%d", tmp)   && (tmp != 0);
       tmp = 0;
       bias_write  = $value$plusargs("BIAS_WRITE=%d", tmp)  && (tmp != 0);
+      tmp = 0;
+      bias_narrow = $value$plusargs("BIAS_NARROW=%d", tmp) && (tmp != 0);
+      tmp = 0;
+      bias_full   = $value$plusargs("BIAS_FULL=%d", tmp)   && (tmp != 0);
 
       repeat (count) begin
         tr = axi_txn::type_id::create("cov_tr");
@@ -469,6 +475,8 @@ package axi_ucie_tb_pkg;
           if (bias_incr && !bias_fixed) burst == 2'b01;
           if (bias_read && !bias_write) kind == AXI_READ;
           if (bias_write && !bias_read) kind == AXI_WRITE;
+          if (bias_narrow && !bias_full) size inside {[0:AXI_FULL_SIZE-1]};
+          if (bias_full && !bias_narrow) size == AXI_FULL_SIZE;
         })
           `uvm_fatal("RAND", "axi_cov_guided_seq randomization failed")
         finish_item(tr);
