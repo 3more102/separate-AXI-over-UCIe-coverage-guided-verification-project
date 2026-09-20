@@ -2,6 +2,7 @@
   "bins": {
     "kind.read": 14,
     "kind.write": 18,
+    "strobe.partial": 0,
     "len.medium": 3,
     "len.long": 0,
     "burst.fixed": 0,
