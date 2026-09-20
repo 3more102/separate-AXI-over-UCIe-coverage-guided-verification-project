@@ -4,6 +4,9 @@ module smoke_tb;
   localparam int ADDR_W = 32;
   localparam int DATA_W = 64;
   localparam int ID_W   = 4;
+  localparam logic [1:0] BURST_FIXED = 2'b00;
+  localparam logic [1:0] BURST_INCR  = 2'b01;
+  localparam logic [1:0] BURST_WRAP  = 2'b10;
 
   logic clk = 1'b0;
   logic rst_n = 1'b0;
@@ -97,26 +100,23 @@ module smoke_tb;
     end
   endtask
 
-  task automatic axi_write(
+  task automatic axi_write_burst(
     input logic [ADDR_W-1:0] addr,
-    input logic [DATA_W-1:0] data,
+    input logic [DATA_W-1:0] base_data,
     input logic [ID_W-1:0] id,
     input logic [7:0] len,
+    input logic [1:0] burst,
     input logic [1:0] expected_resp
   );
+    integer beat;
     begin
       @(negedge clk);
-      awid = id;
-      awaddr = addr;
-      awlen = len;
-      awsize = $clog2(DATA_W/8);
-      awburst = 2'b01;
+      awid    = id;
+      awaddr  = addr;
+      awlen   = len;
+      awsize  = $clog2(DATA_W/8);
+      awburst = burst;
       awvalid = 1'b1;
-
-      wdata = data;
-      wstrb = '1;
-      wlast = 1'b1;
-      wvalid = 1'b1;
 
       fork
         begin
@@ -125,9 +125,16 @@ module smoke_tb;
           awvalid = 1'b0;
         end
         begin
-          do @(posedge clk); while (!wready);
-          @(negedge clk);
-          wvalid = 1'b0;
+          for (beat = 0; beat <= len; beat = beat + 1) begin
+            wdata  = base_data + beat;
+            wstrb  = '1;
+            wlast  = (beat == len);
+            wvalid = 1'b1;
+            do @(posedge clk); while (!wready);
+            @(negedge clk);
+            wvalid = 1'b0;
+          end
+          wlast = 1'b0;
         end
       join
 
@@ -146,20 +153,65 @@ module smoke_tb;
     end
   endtask
 
-  task automatic axi_read(
+  task automatic axi_read_burst(
+    input logic [ADDR_W-1:0] addr,
+    input logic [DATA_W-1:0] base_data,
+    input logic [ID_W-1:0] id,
+    input logic [7:0] len,
+    input logic [1:0] burst,
+    input logic [1:0] expected_resp
+  );
+    integer beat;
+    logic [DATA_W-1:0] expected_data;
+    begin
+      @(negedge clk);
+      arid    = id;
+      araddr  = addr;
+      arlen   = len;
+      arsize  = $clog2(DATA_W/8);
+      arburst = burst;
+      arvalid = 1'b1;
+
+      do @(posedge clk); while (!arready);
+      @(negedge clk);
+      arvalid = 1'b0;
+
+      for (beat = 0; beat <= len; beat = beat + 1) begin
+        wait (rvalid === 1'b1);
+        expected_data = (burst == BURST_FIXED) ? (base_data + len) : (base_data + beat);
+
+        if (rid !== id)
+          fail($sformatf("RID mismatch beat=%0d exp=%0d got=%0d", beat, id, rid));
+        if (rresp !== expected_resp)
+          fail($sformatf("RRESP mismatch beat=%0d exp=%0b got=%0b", beat, expected_resp, rresp));
+        if (rlast !== (beat == len))
+          fail($sformatf("RLAST mismatch beat=%0d len=%0d rlast=%0b", beat, len, rlast));
+        if ((expected_resp == 2'b00) && (rdata !== expected_data))
+          fail($sformatf("RDATA mismatch beat=%0d exp=%h got=%h", beat, expected_data, rdata));
+
+        repeat ((beat % 2) + 1) @(posedge clk);
+        @(negedge clk);
+        rready = 1'b1;
+        @(posedge clk);
+        @(negedge clk);
+        rready = 1'b0;
+      end
+    end
+  endtask
+
+  task automatic axi_read_error(
     input logic [ADDR_W-1:0] addr,
     input logic [ID_W-1:0] id,
     input logic [7:0] len,
-    input logic [1:0] expected_resp,
-    input logic [DATA_W-1:0] expected_data
+    input logic [1:0] burst
   );
     begin
       @(negedge clk);
-      arid = id;
-      araddr = addr;
-      arlen = len;
-      arsize = $clog2(DATA_W/8);
-      arburst = 2'b01;
+      arid    = id;
+      araddr  = addr;
+      arlen   = len;
+      arsize  = $clog2(DATA_W/8);
+      arburst = burst;
       arvalid = 1'b1;
 
       do @(posedge clk); while (!arready);
@@ -168,15 +220,12 @@ module smoke_tb;
 
       wait (rvalid === 1'b1);
       if (rid !== id)
-        fail($sformatf("RID mismatch exp=%0d got=%0d", id, rid));
-      if (rresp !== expected_resp)
-        fail($sformatf("RRESP mismatch exp=%0b got=%0b", expected_resp, rresp));
+        fail($sformatf("RID mismatch for rejected read exp=%0d got=%0d", id, rid));
+      if (rresp !== 2'b10)
+        fail($sformatf("Rejected read did not return SLVERR: %0b", rresp));
       if (!rlast)
-        fail("RLAST was not asserted");
-      if ((expected_resp == 2'b00) && (rdata !== expected_data))
-        fail($sformatf("RDATA mismatch exp=%h got=%h", expected_data, rdata));
+        fail("Rejected read must terminate with RLAST");
 
-      repeat (2) @(posedge clk);
       @(negedge clk);
       rready = 1'b1;
       @(posedge clk);
@@ -196,11 +245,19 @@ module smoke_tb;
     @(negedge clk);
     rst_n = 1'b1;
 
-    $display("TEST: write/read with response backpressure");
-    axi_write(32'h0000_0020, 64'hDEAD_BEEF_CAFE_BABE, 4'h3, 8'd0, 2'b00);
-    axi_read (32'h0000_0020, 4'h5, 8'd0, 2'b00, 64'hDEAD_BEEF_CAFE_BABE);
+    $display("TEST: single-beat write/read with response backpressure");
+    axi_write_burst(32'h0000_0020, 64'hDEAD_BEEF_CAFE_BABE, 4'h3, 8'd0, BURST_INCR, 2'b00);
+    axi_read_burst (32'h0000_0020, 64'hDEAD_BEEF_CAFE_BABE, 4'h5, 8'd0, BURST_INCR, 2'b00);
 
-    $display("TEST: link request stall");
+    $display("TEST: four-beat INCR burst packetization");
+    axi_write_burst(32'h0000_0080, 64'h1000_0000_0000_0000, 4'h4, 8'd3, BURST_INCR, 2'b00);
+    axi_read_burst (32'h0000_0080, 64'h1000_0000_0000_0000, 4'h6, 8'd3, BURST_INCR, 2'b00);
+
+    $display("TEST: three-beat FIXED burst packetization");
+    axi_write_burst(32'h0000_0100, 64'h2000_0000_0000_0000, 4'h7, 8'd2, BURST_FIXED, 2'b00);
+    axi_read_burst (32'h0000_0100, 64'h2000_0000_0000_0000, 4'h8, 8'd2, BURST_FIXED, 2'b00);
+
+    $display("TEST: link request stall inside burst");
     allow_req = 1'b0;
     fork
       begin
@@ -211,33 +268,33 @@ module smoke_tb;
         allow_req = 1'b1;
       end
       begin
-        axi_write(32'h0000_0040, 64'h0123_4567_89AB_CDEF, 4'h7, 8'd0, 2'b00);
+        axi_write_burst(32'h0000_0140, 64'h3000_0000_0000_0000, 4'h9, 8'd1, BURST_INCR, 2'b00);
       end
     join
-    axi_read(32'h0000_0040, 4'h8, 8'd0, 2'b00, 64'h0123_4567_89AB_CDEF);
+    axi_read_burst(32'h0000_0140, 64'h3000_0000_0000_0000, 4'hA, 8'd1, BURST_INCR, 2'b00);
 
-    $display("TEST: unsupported burst rejected locally");
+    $display("TEST: unsupported WRAP burst rejected locally");
     begin : burst_reject_check
       integer before_count;
       before_count = link_accepts;
-      axi_write(32'h0000_0060, 64'hA5A5_A5A5_A5A5_A5A5, 4'h9, 8'd1, 2'b10);
+      axi_write_burst(32'h0000_0180, 64'hA5A5_A5A5_A5A5_A5A5, 4'hB, 8'd1, BURST_WRAP, 2'b10);
       if (link_accepts != before_count)
-        fail("unsupported write burst reached the link");
-      axi_read(32'h0000_0060, 4'hA, 8'd2, 2'b10, '0);
+        fail("unsupported WRAP write reached the link");
+      axi_read_error(32'h0000_0180, 4'hC, 8'd2, BURST_WRAP);
       if (link_accepts != before_count)
-        fail("unsupported read burst reached the link");
+        fail("unsupported WRAP read reached the link");
     end
 
-    $display("TEST: reset recovery");
+    $display("TEST: reset recovery preserves endpoint memory");
     @(negedge clk);
     rst_n = 1'b0;
     repeat (3) @(posedge clk);
     @(negedge clk);
     rst_n = 1'b1;
-    axi_read(32'h0000_0020, 4'hB, 8'd0, 2'b00, 64'hDEAD_BEEF_CAFE_BABE);
+    axi_read_burst(32'h0000_0020, 64'hDEAD_BEEF_CAFE_BABE, 4'hD, 8'd0, BURST_INCR, 2'b00);
 
     if (errors == 0) begin
-      $display("SMOKE PASS: %0d link requests accepted", link_accepts);
+      $display("SMOKE PASS: %0d link beat requests accepted", link_accepts);
       $finish;
     end else begin
       $fatal(1, "SMOKE FAIL: %0d error(s)", errors);
