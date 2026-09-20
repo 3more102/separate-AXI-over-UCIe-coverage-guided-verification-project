@@ -3,7 +3,14 @@ VVP      ?= vvp
 PYTHON   ?= python3
 BUILD    ?= build
 
-.PHONY: all smoke lint py-test regress feedback clean
+QUESTA        ?= vsim
+VLOG          ?= vlog
+UVM_TEST      ?= axi_ucie_smoke_test
+UVM_SEED      ?= 1
+UVM_TXN_COUNT ?= 100
+UVM_PLUSARGS  ?=
+
+.PHONY: all smoke lint py-test regress feedback questa questa-guided clean
 
 all: lint py-test smoke regress feedback
 
@@ -30,5 +37,20 @@ feedback:
 		--input examples/coverage.sample.json \
 		--output build/next_bias.json
 
+# Optional commercial-UVM flow. The default open-source CI does not require Questa.
+questa:
+	rm -rf work transcript vsim.wlf
+	vlib work
+	$(VLOG) -sv -L uvm -f files.f
+	$(QUESTA) -c -L uvm tb_top \
+		+UVM_TESTNAME=$(UVM_TEST) \
+		+ntb_random_seed=$(UVM_SEED) \
+		+TXN_COUNT=$(UVM_TXN_COUNT) \
+		$(UVM_PLUSARGS) \
+		-do "run -all; quit -f"
+
+questa-guided:
+	$(MAKE) questa UVM_TEST=axi_ucie_cov_guided_test UVM_PLUSARGS="$(UVM_PLUSARGS)"
+
 clean:
-	rm -rf $(BUILD) ../build
+	rm -rf $(BUILD) ../build work transcript vsim.wlf
