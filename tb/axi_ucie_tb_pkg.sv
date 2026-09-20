@@ -23,6 +23,7 @@ package axi_ucie_tb_pkg;
          bit [AXI_STRB_W-1:0] strb_q[$];
          bit [AXI_ID_W-1:0] rsp_id;
          bit [1:0] resp_q[$];
+         bit force_partial;
 
     constraint c_len   { len inside {[0:15]}; }
     // Keep M0 traffic full-width: the current memory model does not yet
@@ -59,6 +60,15 @@ package axi_ucie_tb_pkg;
         lane_mask = '0;
         for (int unsigned byte_idx = 0; byte_idx < bytes_per_beat; byte_idx++)
           lane_mask[first_lane + byte_idx] = 1'b1;
+
+        if (force_partial && (AXI_STRB_W > 1)) begin
+          for (int unsigned lane = 0; lane < AXI_STRB_W; lane++) begin
+            if (lane_mask[lane]) begin
+              lane_mask[lane] = 1'b0;
+              break;
+            end
+          end
+        end
         strb_q.push_back(lane_mask);
 
         if (burst == 2'b01)
@@ -331,6 +341,7 @@ package axi_ucie_tb_pkg;
     bit [7:0] sample_len;
     bit [1:0] sample_burst;
     bit [2:0] sample_size;
+    bit sample_partial;
 
     covergroup cg;
       option.per_instance = 1;
@@ -351,6 +362,10 @@ package axi_ucie_tb_pkg;
       cp_size: coverpoint sample_size {
         bins full_width = {AXI_FULL_SIZE};
       }
+      cp_strobe: coverpoint sample_partial iff (sample_kind == AXI_WRITE) {
+        bins full = {0};
+        bins partial = {1};
+      }
       kind_x_len_x_burst: cross cp_kind, cp_len, cp_burst;
     endgroup
 
@@ -360,10 +375,16 @@ package axi_ucie_tb_pkg;
     endfunction
 
     function void write(axi_txn t);
-      sample_kind  = t.kind;
-      sample_len   = t.len;
-      sample_burst = t.burst;
-      sample_size  = t.size;
+      sample_kind    = t.kind;
+      sample_len     = t.len;
+      sample_burst   = t.burst;
+      sample_size    = t.size;
+      sample_partial = 1'b0;
+      if (t.kind == AXI_WRITE) begin
+        foreach (t.strb_q[i])
+          if (t.strb_q[i] != '1)
+            sample_partial = 1'b1;
+      end
       cg.sample();
     endfunction
   endclass
@@ -443,7 +464,7 @@ package axi_ucie_tb_pkg;
     task body();
       axi_txn tr;
       int count = 100;
-      bit bias_long, bias_medium, bias_fixed, bias_incr, bias_read, bias_write;
+      bit bias_long, bias_medium, bias_fixed, bias_incr, bias_read, bias_write, bias_partial;
       int tmp;
 
       void'($value$plusargs("TXN_COUNT=%d", count));
@@ -458,17 +479,21 @@ package axi_ucie_tb_pkg;
       bias_read   = $value$plusargs("BIAS_READ=%d", tmp)   && (tmp != 0);
       tmp = 0;
       bias_write  = $value$plusargs("BIAS_WRITE=%d", tmp)  && (tmp != 0);
+      tmp = 0;
+      bias_partial = $value$plusargs("BIAS_PARTIAL=%d", tmp) && (tmp != 0);
 
       repeat (count) begin
         tr = axi_txn::type_id::create("cov_tr");
+        tr.force_partial = bias_partial;
         start_item(tr);
         if (!tr.randomize() with {
           if (bias_long) len inside {[8:15]};
           else if (bias_medium) len inside {[4:7]};
           if (bias_fixed && !bias_incr) burst == 2'b00;
           if (bias_incr && !bias_fixed) burst == 2'b01;
-          if (bias_read && !bias_write) kind == AXI_READ;
-          if (bias_write && !bias_read) kind == AXI_WRITE;
+          if (bias_partial) kind == AXI_WRITE;
+          if (!bias_partial && bias_read && !bias_write) kind == AXI_READ;
+          if (!bias_partial && bias_write && !bias_read) kind == AXI_WRITE;
         })
           `uvm_fatal("RAND", "axi_cov_guided_seq randomization failed")
         finish_item(tr);
