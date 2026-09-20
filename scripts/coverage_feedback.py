@@ -16,6 +16,8 @@ BIAS_RULES = {
     "burst.incr": "BIAS_INCR",
     "kind.read": "BIAS_READ",
     "kind.write": "BIAS_WRITE",
+    "size.narrow": "BIAS_NARROW",
+    "size.full": "BIAS_FULL",
 }
 
 
