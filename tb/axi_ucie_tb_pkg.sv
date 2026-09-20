@@ -26,9 +26,8 @@ package axi_ucie_tb_pkg;
          bit force_partial;
 
     constraint c_len   { len inside {[0:15]}; }
-    // Keep M0 traffic full-width: the current memory model does not yet
-    // implement AXI narrow-transfer lane placement/strobe semantics.
-    constraint c_size  { size == AXI_FULL_SIZE; }
+    // Legal transfer sizes from one byte through the full data-bus width.
+    constraint c_size  { size inside {[0:AXI_FULL_SIZE]}; }
     constraint c_burst { burst inside {2'b00, 2'b01}; }
     constraint c_addr  {
       addr inside {[0:3840]};
@@ -360,6 +359,7 @@ package axi_ucie_tb_pkg;
         bins incr  = {2'b01};
       }
       cp_size: coverpoint sample_size {
+        bins narrow[]   = {[0:AXI_FULL_SIZE-1]};
         bins full_width = {AXI_FULL_SIZE};
       }
       cp_strobe: coverpoint sample_partial iff (sample_kind == AXI_WRITE) {
@@ -369,21 +369,47 @@ package axi_ucie_tb_pkg;
       kind_x_len_x_burst: cross cp_kind, cp_len, cp_burst;
     endgroup
 
+    function automatic bit [AXI_STRB_W-1:0] legal_strb_mask(
+      input bit [AXI_ADDR_W-1:0] addr,
+      input bit [2:0] size
+    );
+      bit [AXI_STRB_W-1:0] mask;
+      int unsigned bytes_per_beat;
+      int unsigned first_lane;
+      mask = '0;
+      bytes_per_beat = 1 << size;
+      first_lane = addr % AXI_STRB_W;
+      for (int unsigned byte_idx = 0; byte_idx < bytes_per_beat; byte_idx++)
+        mask[first_lane + byte_idx] = 1'b1;
+      return mask;
+    endfunction
+
     function new(string name, uvm_component parent);
       super.new(name, parent);
       cg = new();
     endfunction
 
     function void write(axi_txn t);
+      bit [AXI_ADDR_W-1:0] beat_addr;
+      bit [AXI_STRB_W-1:0] expected_mask;
+      int unsigned bytes_per_beat;
+
       sample_kind    = t.kind;
       sample_len     = t.len;
       sample_burst   = t.burst;
       sample_size    = t.size;
       sample_partial = 1'b0;
+
       if (t.kind == AXI_WRITE) begin
-        foreach (t.strb_q[i])
-          if (t.strb_q[i] != '1)
+        beat_addr = t.addr;
+        bytes_per_beat = 1 << t.size;
+        foreach (t.strb_q[i]) begin
+          expected_mask = legal_strb_mask(beat_addr, t.size);
+          if (t.strb_q[i] != expected_mask)
             sample_partial = 1'b1;
+          if (t.burst == 2'b01)
+            beat_addr += bytes_per_beat;
+        end
       end
       cg.sample();
     endfunction
@@ -465,6 +491,7 @@ package axi_ucie_tb_pkg;
       axi_txn tr;
       int count = 100;
       bit bias_long, bias_medium, bias_fixed, bias_incr, bias_read, bias_write, bias_partial;
+      bit bias_narrow, bias_full;
       int tmp;
 
       void'($value$plusargs("TXN_COUNT=%d", count));
@@ -481,6 +508,10 @@ package axi_ucie_tb_pkg;
       bias_write  = $value$plusargs("BIAS_WRITE=%d", tmp)  && (tmp != 0);
       tmp = 0;
       bias_partial = $value$plusargs("BIAS_PARTIAL=%d", tmp) && (tmp != 0);
+      tmp = 0;
+      bias_narrow = $value$plusargs("BIAS_NARROW=%d", tmp) && (tmp != 0);
+      tmp = 0;
+      bias_full = $value$plusargs("BIAS_FULL=%d", tmp) && (tmp != 0);
 
       repeat (count) begin
         tr = axi_txn::type_id::create("cov_tr");
@@ -492,6 +523,11 @@ package axi_ucie_tb_pkg;
           if (bias_fixed && !bias_incr) burst == 2'b00;
           if (bias_incr && !bias_fixed) burst == 2'b01;
           if (bias_partial) kind == AXI_WRITE;
+          if (bias_partial) size == AXI_FULL_SIZE;
+          if (!bias_partial && bias_narrow && !bias_full)
+            size inside {[0:AXI_FULL_SIZE-1]};
+          if (!bias_partial && bias_full && !bias_narrow)
+            size == AXI_FULL_SIZE;
           if (!bias_partial && bias_read && !bias_write) kind == AXI_READ;
           if (!bias_partial && bias_write && !bias_read) kind == AXI_WRITE;
         })
