@@ -60,7 +60,7 @@ package axi_ucie_tb_pkg;
         for (int unsigned byte_idx = 0; byte_idx < bytes_per_beat; byte_idx++)
           lane_mask[first_lane + byte_idx] = 1'b1;
 
-        if (force_partial && (AXI_STRB_W > 1)) begin
+        if (force_partial && (bytes_per_beat > 1)) begin
           for (int unsigned lane = 0; lane < AXI_STRB_W; lane++) begin
             if (lane_mask[lane]) begin
               lane_mask[lane] = 1'b0;
@@ -523,10 +523,10 @@ package axi_ucie_tb_pkg;
           if (bias_fixed && !bias_incr) burst == 2'b00;
           if (bias_incr && !bias_fixed) burst == 2'b01;
           if (bias_partial) kind == AXI_WRITE;
-          if (bias_partial) size == AXI_FULL_SIZE;
-          if (!bias_partial && bias_narrow && !bias_full)
+          if (bias_partial) size inside {[1:AXI_FULL_SIZE]};
+          if (bias_narrow && !bias_full)
             size inside {[0:AXI_FULL_SIZE-1]};
-          if (!bias_partial && bias_full && !bias_narrow)
+          if (bias_full && !bias_narrow)
             size == AXI_FULL_SIZE;
           if (!bias_partial && bias_read && !bias_write) kind == AXI_READ;
           if (!bias_partial && bias_write && !bias_read) kind == AXI_WRITE;
