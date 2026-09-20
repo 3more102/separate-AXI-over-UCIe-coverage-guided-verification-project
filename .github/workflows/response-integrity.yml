@@ -1,0 +1,34 @@
+name: response-integrity-ci
+
+on:
+  push:
+    paths:
+      - "rtl/axi_ucie_bridge.sv"
+      - "tb/smoke/response_integrity_tb.sv"
+      - ".github/workflows/response-integrity.yml"
+  pull_request:
+    paths:
+      - "rtl/axi_ucie_bridge.sv"
+      - "tb/smoke/response_integrity_tb.sv"
+      - ".github/workflows/response-integrity.yml"
+
+jobs:
+  response-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog
+      - name: Compile response-integrity regression
+        run: |
+          mkdir -p build
+          iverilog -g2012 -Wall -s response_integrity_tb \
+            -o build/response_integrity.vvp \
+            rtl/axi_ucie_bridge.sv \
+            tb/smoke/response_integrity_tb.sv
+      - name: Run response-integrity regression
+        run: |
+          vvp build/response_integrity.vvp | tee build/response_integrity.log
+          grep -q "RESPONSE INTEGRITY PASS" build/response_integrity.log
