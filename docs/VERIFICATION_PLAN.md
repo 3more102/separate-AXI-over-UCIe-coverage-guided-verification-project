@@ -10,10 +10,11 @@ it is not a full UCIe PHY or Adapter implementation.
 
 The repository currently contains:
 
-- A single-beat AXI-to-link bridge and a link-side memory endpoint.
+- A single-outstanding AXI-to-link bridge with per-beat FIXED and INCR burst packetization.
+- A byte-addressable link-side memory endpoint with write-strobe handling.
 - AXI interface and protocol-stability assertions.
-- An open-source SystemVerilog smoke test with link and response backpressure.
-- Explicit rejection of unsupported multi-beat requests.
+- An open-source SystemVerilog smoke test covering single-beat traffic, multi-beat FIXED/INCR bursts, link stalls, AXI response backpressure, local WRAP rejection, and reset recovery.
+- Local SLVERR handling for unsupported WRAP/reserved burst types and transfer sizes wider than the data bus.
 - A deterministic Python transaction/link model.
 - Coverage-guided scenario selection using a UCB1 planner.
 - Coverage JSON to next-run bias conversion.
@@ -21,29 +22,45 @@ The repository currently contains:
 - Python unit tests and an Icarus-based smoke/lint flow.
 - GitHub Actions CI for the open-source flow; Questa/UVM is an optional local target.
 
+## Packetized bridge policy
+
+The bridge converts each accepted AXI burst beat into one request on the
+UCIe-style link. It keeps at most one link request in flight, which makes
+response association deterministic while the packet format and checking
+strategy mature.
+
+For writes, AW metadata remains active across the burst, W beats are forwarded
+one at a time, link response errors are accumulated, and one AXI B response is
+returned after the final beat. For reads, the bridge advances the effective
+address after each accepted AXI R beat and emits RLAST only on the final beat.
+FIXED holds the effective address constant; INCR advances by 2^SIZE bytes.
+
 ## Verification matrix
 
 | Area | Current | Next |
 | --- | --- | --- |
-| Packetized AXI read/write RTL | Single beat | Full multi-beat packetization |
+| Packetized AXI read/write RTL | FIXED/INCR bursts, one link request per beat | WRAP addressing + deeper pipelining |
 | UVM methodology path | Burst-capable reference tunnel + scoreboard | Connect to packetized bridge/link agent |
-| AW/W decoupling | Covered in packetized smoke | Randomized timing expansion |
-| AXI response backpressure | Covered | Cross with bursts and IDs |
-| Link request stall | Covered | Random stall distributions |
-| IDs | Preserved end-to-end | Multiple outstanding and reordering |
-| Partial write | Abstract model | RTL smoke and UVM sequence |
-| Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
-| Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
+| AW/W decoupling | One-beat W buffering + packetized smoke | Randomized timing expansion |
+| AXI response backpressure | Covered, including multi-beat reads | Cross with IDs and link stalls |
+| Link request stall | Covered inside burst traffic | Random stall distributions |
+| IDs | Preserved end-to-end for single outstanding flow | Multiple outstanding and reordering |
+| Partial write | Endpoint/bridge datapath supports WSTRB | Add explicit packetized smoke + UVM coverage |
+| Reset recovery | Packetized smoke + abstract model | Mid-burst and multi-outstanding reset |
+| Link errors | Write response accumulation + abstract CRC/timeout retry model | RTL/UVM fault injection |
 | Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
-| Assertions | Ready/valid stability | Ordering, burst legality, liveness |
+| Assertions | Ready/valid stability | Burst legality, order, no-loss/no-duplication, liveness |
 
 ## UVM coverage layer
 
-The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, transfer size, and the operation x length x burst cross. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, and BIAS_WRITE plusargs.
+The UVM environment currently covers operation, burst length class, FIXED/INCR
+burst type, transfer size, and the operation x length x burst cross. The
+coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR,
+BIAS_READ, and BIAS_WRITE plusargs.
 
-The next UVM expansion should cover address
-alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
-link stalls, response type, retry/error class, and reset timing.
+The next UVM expansion should cover address alignment and boundary class, ID,
+outstanding depth, AXI channel backpressure, link stalls, response type,
+retry/error class, and reset timing.
 
 High-value crosses include:
 
@@ -71,9 +88,9 @@ read data ordering.
 
 ## Next implementation milestone
 
-1. Packetize full AXI INCR/FIXED/WRAP bursts.
-2. Add configurable multiple outstanding transactions.
-3. Add ID-aware reorder checking.
-4. Replace the reference channel tunnel in the UVM top with the packetized AXI-over-UCIe bridge plus a dedicated link agent.
+1. Replace the UVM reference channel tunnel with the packetized AXI-over-UCIe bridge and a dedicated link agent.
+2. Add explicit packetized partial-write, WLAST-error, and response-error tests.
+3. Add WRAP burst address generation and legality checks.
+4. Add configurable multiple outstanding transactions and ID-aware reorder checking.
 5. Add link fault injection and retry/status modeling.
 6. Export and merge simulator coverage into the neutral JSON feedback path.
