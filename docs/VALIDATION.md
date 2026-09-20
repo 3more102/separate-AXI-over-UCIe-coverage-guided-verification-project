@@ -7,7 +7,7 @@ This repository has three distinct verification layers. Results should be interp
 The default CI runs the milestone packetized bridge with open-source simulators:
 
 - Icarus Verilog lint and smoke simulation for the single-beat packetized path.
-- Verilator reference smoke for the burst-capable reference DUT.
+- Verilator reference smoke for FIXED/INCR bursts and byte/halfword AXI lane mapping under deterministic request/response stalls.
 - Python unit tests.
 - Deterministic coverage-guided abstract regression.
 - Paired baseline-vs-guided experiment.
@@ -17,9 +17,9 @@ The packetized bridge remains a simplified UCIe-style transport milestone, not a
 
 ## UVM/Questa path
 
-The UVM environment in `tb/axi_ucie_tb_pkg.sv` and `tb/tb_top.sv` uses the burst-capable reference DUT and testbench memory model for AXI semantic verification, scoreboarding, functional coverage, assertions, and coverage-guided plusargs.
+The UVM environment in `tb/axi_ucie_tb_pkg.sv` and `tb/tb_top.sv` uses the burst-capable reference DUT and testbench memory model for AXI semantic verification, scoreboarding, functional coverage, assertions, legal byte/halfword/full-width transfer sizing, partial-strobe classification, and coverage-guided plusargs.
 
-This path requires a UVM-capable simulator such as Questa and is not executed by the default open-source CI job.
+This path requires a UVM-capable simulator such as Questa and is not executed by the default open-source CI job. The open-source Verilator smoke independently exercises the reference memory's narrow-transfer lane semantics; it does not execute the UVM classes themselves.
 
 ## Abstract guidance path
 
