@@ -1,0 +1,10 @@
+{
+  "bins": {
+    "kind.read": 14,
+    "kind.write": 18,
+    "len.medium": 3,
+    "len.long": 0,
+    "burst.fixed": 0,
+    "burst.incr": 31
+  }
+}
