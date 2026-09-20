@@ -41,7 +41,7 @@ The sequence recognizes:
 - +BIAS_FULL=1
 - +TXN_COUNT=N
 
-The helper in scripts/coverage_feedback.py converts neutral JSON bin counts into these plusargs. BIAS_PARTIAL targets full-width masked writes; BIAS_NARROW targets legal byte/halfword transfers so narrow lane masks are not conflated with partial-write coverage.
+The helper in scripts/coverage_feedback.py converts neutral JSON bin counts into these plusargs. BIAS_PARTIAL targets masked writes with at least two active transfer bytes; it composes with BIAS_NARROW, while legal narrow lane masks by themselves are not conflated with partial-write coverage.
 
 ## Important boundary
 
