@@ -61,6 +61,7 @@ def _report(mode: str, coverage: CoverageTracker, history: list[dict]) -> dict:
         "coverage_ratio": coverage.ratio,
         "tests_to_full_coverage": first_full,
         "missing_bins": coverage.missing(),
+        "bins": coverage.as_bin_counts(),
         "history": history,
     }
 
