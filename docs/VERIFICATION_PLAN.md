@@ -32,7 +32,7 @@ The repository currently contains:
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
 | Partial write | Packetized RTL smoke + abstract model | UVM coverage-guided partial-write sequence |
-| Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
+| Transfer size | Legal byte/halfword/full-width UVM traffic with lane/strobe mapping | Carry narrow-transfer checks into packetized RTL |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
 | Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
@@ -40,7 +40,7 @@ The repository currently contains:
 
 ## UVM coverage layer
 
-The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, and the operation x length x burst cross. Narrow byte/halfword lane/strobe mapping is intentionally deferred until it is modeled correctly. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, and BIAS_WRITE plusargs.
+The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, narrow/full-width transfer size, and the operation x length x burst cross. The byte-addressed memory model aligns AXI byte lanes to the containing data-bus word so legal byte and halfword transfers preserve WSTRB lane semantics. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, BIAS_WRITE, BIAS_NARROW, and BIAS_FULL plusargs.
 
 The next UVM expansion should cover address
 alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
@@ -72,7 +72,7 @@ read data ordering.
 
 ## Next implementation milestone
 
-1. Packetize full AXI INCR/FIXED/WRAP bursts and add legal narrow-transfer lane mapping.
+1. Packetize full AXI INCR/FIXED/WRAP bursts and carry the validated narrow-transfer lane mapping into the packetized RTL path.
 2. Add configurable multiple outstanding transactions.
 3. Add ID-aware reorder checking.
 4. Replace the reference channel tunnel in the UVM top with the packetized AXI-over-UCIe bridge plus a dedicated link agent.
