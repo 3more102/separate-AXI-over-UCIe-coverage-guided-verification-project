@@ -192,6 +192,9 @@ package axi_ucie_tb_pkg;
         end
 
         do @(posedge vif.aclk); while (!(vif.bvalid && vif.bready));
+        if (vif.bid !== tr.id)
+          `uvm_error("BID", $sformatf("BID mismatch: request id=%0h response id=%0h",
+                                      tr.id, vif.bid))
         tr.resp_q.push_back(vif.bresp);
         ap.write(tr);
       end
@@ -211,6 +214,9 @@ package axi_ucie_tb_pkg;
 
         forever begin
           do @(posedge vif.aclk); while (!(vif.rvalid && vif.rready));
+          if (vif.rid !== tr.id)
+            `uvm_error("RID", $sformatf("RID mismatch: request id=%0h response id=%0h",
+                                        tr.id, vif.rid))
           tr.data_q.push_back(vif.rdata);
           tr.resp_q.push_back(vif.rresp);
           if (vif.rlast)
