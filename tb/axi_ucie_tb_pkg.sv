@@ -75,6 +75,7 @@ package axi_ucie_tb_pkg;
       `uvm_field_int(burst, UVM_ALL_ON)
       `uvm_field_queue_int(data_q, UVM_ALL_ON)
       `uvm_field_queue_int(strb_q, UVM_ALL_ON)
+      `uvm_field_int(rsp_id, UVM_ALL_ON)
       `uvm_field_queue_int(resp_q, UVM_ALL_ON)
     `uvm_object_utils_end
 
@@ -248,9 +249,6 @@ package axi_ucie_tb_pkg;
             `uvm_error("RID", $sformatf("RID mismatch: request id=%0h response id=%0h",
                                         tr.id, vif.rid))
           tr.rsp_id = vif.rid;
-          if (vif.rid != tr.id)
-            `uvm_error("MON_RID",
-              $sformatf("RID=%0h does not match ARID=%0h", vif.rid, tr.id))
           tr.data_q.push_back(vif.rdata);
           tr.resp_q.push_back(vif.rresp);
           if (vif.rlast)

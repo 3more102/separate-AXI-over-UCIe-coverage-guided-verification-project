@@ -10,7 +10,7 @@ UCIe PHY/Adapter compliance.
 
 - Single-beat AXI read/write bridge with independent AW/W buffering.
 - UCIe-style request/response transport and memory endpoint.
-- AXI/link backpressure scenarios and reset recovery smoke testing.
+- AXI/link backpressure, AW/W ordering, partial-write, rejected-burst draining, and reset-recovery smoke testing.
 - Local SLVERR for unsupported multi-beat requests.
 - AXI ready/valid stability assertions.
 - Deterministic abstract transport model with retry/error scenarios.
@@ -19,7 +19,7 @@ UCIe PHY/Adapter compliance.
 - Per-bin neutral coverage artifacts with hit counts.
 - Coverage-hole to next-run plusarg bias helper.
 - UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, covergroups, and a coverage-guided sequence.
-- Python unit tests, Icarus/Verilator smoke checks, and GitHub Actions CI.
+- Python unit tests, Icarus packet smoke/lint, Verilator burst-reference smoke, and GitHub Actions CI.
 
 ## Repository layout
 

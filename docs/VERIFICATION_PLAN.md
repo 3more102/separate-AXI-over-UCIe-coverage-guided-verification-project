@@ -19,7 +19,7 @@ The repository currently contains:
 - Per-bin neutral coverage hit-count export, including zero-hit bins.
 - Coverage JSON to next-run bias conversion with explicit mapped/unmapped holes.
 - UVM AXI driver/sequencer, dual monitors, semantic end-to-end scoreboard, covergroups, and coverage-guided sequence running against a separate burst-capable channel-tunnel reference DUT.
-- Python unit tests and an Icarus-based smoke/lint flow.
+- Python unit tests, an Icarus packet smoke/lint flow, and a Verilator burst-reference smoke.
 - GitHub Actions CI for the open-source flow; Questa/UVM is an optional local target.
 
 ## Verification matrix
@@ -27,12 +27,12 @@ The repository currently contains:
 | Area | Current | Next |
 | --- | --- | --- |
 | Packetized AXI read/write RTL | Single beat | Full multi-beat packetization |
-| UVM methodology path | Burst-capable reference tunnel + scoreboard | Connect to packetized bridge/link agent |
+| UVM methodology path | Burst-capable reference tunnel + scoreboard; FIXED/INCR reference smoke | Connect to packetized bridge/link agent |
 | AW/W decoupling | Covered in packetized smoke | Randomized timing expansion |
 | AXI response backpressure | Covered | Cross with bursts and IDs |
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
-| Partial write | Abstract model | RTL smoke and UVM sequence |
+| Partial write | Packetized RTL smoke + abstract model | UVM coverage-guided partial-write sequence |
 | Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
