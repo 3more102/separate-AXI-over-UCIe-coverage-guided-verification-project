@@ -1,6 +1,6 @@
 package axi_ucie_tb_pkg;
   import uvm_pkg::*;
-  \`include "uvm_macros.svh"
+  `include "uvm_macros.svh"
 
   parameter int AXI_ID_W   = 4;
   parameter int AXI_ADDR_W = 32;
@@ -41,17 +41,17 @@ package axi_ucie_tb_pkg;
       }
     }
 
-    \`uvm_object_utils_begin(axi_txn)
-      \`uvm_field_enum(axi_kind_e, kind, UVM_ALL_ON)
-      \`uvm_field_int(id, UVM_ALL_ON)
-      \`uvm_field_int(addr, UVM_ALL_ON)
-      \`uvm_field_int(len, UVM_ALL_ON)
-      \`uvm_field_int(size, UVM_ALL_ON)
-      \`uvm_field_int(burst, UVM_ALL_ON)
-      \`uvm_field_queue_int(data_q, UVM_ALL_ON)
-      \`uvm_field_queue_int(strb_q, UVM_ALL_ON)
-      \`uvm_field_queue_int(resp_q, UVM_ALL_ON)
-    \`uvm_object_utils_end
+    `uvm_object_utils_begin(axi_txn)
+      `uvm_field_enum(axi_kind_e, kind, UVM_ALL_ON)
+      `uvm_field_int(id, UVM_ALL_ON)
+      `uvm_field_int(addr, UVM_ALL_ON)
+      `uvm_field_int(len, UVM_ALL_ON)
+      `uvm_field_int(size, UVM_ALL_ON)
+      `uvm_field_int(burst, UVM_ALL_ON)
+      `uvm_field_queue_int(data_q, UVM_ALL_ON)
+      `uvm_field_queue_int(strb_q, UVM_ALL_ON)
+      `uvm_field_queue_int(resp_q, UVM_ALL_ON)
+    `uvm_object_utils_end
 
     function new(string name="axi_txn");
       super.new(name);
@@ -59,14 +59,14 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_sequencer extends uvm_sequencer #(axi_txn);
-    \`uvm_component_utils(axi_sequencer)
+    `uvm_component_utils(axi_sequencer)
     function new(string name, uvm_component parent);
       super.new(name, parent);
     endfunction
   endclass
 
   class axi_driver extends uvm_driver #(axi_txn);
-    \`uvm_component_utils(axi_driver)
+    `uvm_component_utils(axi_driver)
     axi_vif_t vif;
 
     function new(string name, uvm_component parent);
@@ -76,7 +76,7 @@ package axi_ucie_tb_pkg;
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "vif", vif))
-        \`uvm_fatal("NOVIF", "axi_driver requires vif")
+        `uvm_fatal("NOVIF", "axi_driver requires vif")
     endfunction
 
     task reset_signals();
@@ -111,7 +111,7 @@ package axi_ucie_tb_pkg;
       vif.bready <= 1'b1;
       do @(posedge vif.aclk); while (!vif.bvalid);
       if (vif.bresp != 2'b00)
-        \`uvm_warning("BRESP", $sformatf("Non-OKAY BRESP=%0b id=%0h", vif.bresp, vif.bid))
+        `uvm_warning("BRESP", $sformatf("Non-OKAY BRESP=%0b id=%0h", vif.bresp, vif.bid))
       @(posedge vif.aclk);
       vif.bready <= 1'b0;
     endtask
@@ -135,7 +135,7 @@ package axi_ucie_tb_pkg;
       for (i = 0; i < beats; i++) begin
         do @(posedge vif.aclk); while (!vif.rvalid);
         if (vif.rlast !== (i == beats-1))
-          \`uvm_error("RLAST", $sformatf("Unexpected RLAST at beat %0d/%0d", i, beats))
+          `uvm_error("RLAST", $sformatf("Unexpected RLAST at beat %0d/%0d", i, beats))
       end
       @(posedge vif.aclk);
       vif.rready <= 1'b0;
@@ -157,7 +157,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_monitor extends uvm_component;
-    \`uvm_component_utils(axi_monitor)
+    `uvm_component_utils(axi_monitor)
     axi_vif_t vif;
     uvm_analysis_port #(axi_txn) ap;
 
@@ -169,7 +169,7 @@ package axi_ucie_tb_pkg;
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "vif", vif))
-        \`uvm_fatal("NOVIF", "axi_monitor requires vif")
+        `uvm_fatal("NOVIF", "axi_monitor requires vif")
     endfunction
 
     task monitor_writes();
@@ -238,7 +238,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_scoreboard extends uvm_component;
-    \`uvm_component_utils(axi_scoreboard)
+    `uvm_component_utils(axi_scoreboard)
     uvm_tlm_analysis_fifo #(axi_txn) src_fifo;
     uvm_tlm_analysis_fifo #(axi_txn) dst_fifo;
     int unsigned compared;
@@ -279,12 +279,12 @@ package axi_ucie_tb_pkg;
         src_fifo.get(src);
         dst_fifo.get(dst);
         if (!equivalent(src, dst)) begin
-          \`uvm_error("E2E_MISMATCH",
+          `uvm_error("E2E_MISMATCH",
             $sformatf("Source and destination transactions differ\nSRC:\n%s\nDST:\n%s",
                       src.sprint(), dst.sprint()))
         end else begin
           compared++;
-          \`uvm_info("E2E_MATCH",
+          `uvm_info("E2E_MATCH",
             $sformatf("Matched transaction %0d kind=%s id=%0h len=%0d",
                       compared, src.kind.name(), src.id, src.len), UVM_MEDIUM)
         end
@@ -293,7 +293,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_coverage extends uvm_subscriber #(axi_txn);
-    \`uvm_component_utils(axi_coverage)
+    `uvm_component_utils(axi_coverage)
     axi_kind_e sample_kind;
     bit [7:0] sample_len;
     bit [1:0] sample_burst;
@@ -338,7 +338,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_ucie_env extends uvm_env;
-    \`uvm_component_utils(axi_ucie_env)
+    `uvm_component_utils(axi_ucie_env)
     axi_sequencer seqr;
     axi_driver drv;
     axi_monitor src_mon;
@@ -355,9 +355,9 @@ package axi_ucie_tb_pkg;
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "src_vif", src_vif))
-        \`uvm_fatal("NOVIF", "env requires src_vif")
+        `uvm_fatal("NOVIF", "env requires src_vif")
       if (!uvm_config_db#(axi_vif_t)::get(this, "", "dst_vif", dst_vif))
-        \`uvm_fatal("NOVIF", "env requires dst_vif")
+        `uvm_fatal("NOVIF", "env requires dst_vif")
 
       uvm_config_db#(axi_vif_t)::set(this, "drv",     "vif", src_vif);
       uvm_config_db#(axi_vif_t)::set(this, "src_mon", "vif", src_vif);
@@ -381,7 +381,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_smoke_seq extends uvm_sequence #(axi_txn);
-    \`uvm_object_utils(axi_smoke_seq)
+    `uvm_object_utils(axi_smoke_seq)
     function new(string name="axi_smoke_seq");
       super.new(name);
     endfunction
@@ -397,14 +397,14 @@ package axi_ucie_tb_pkg;
           if ((i % 3) == 0) len == 0;
           else len inside {[1:7]};
         })
-          \`uvm_fatal("RAND", "axi_smoke_seq randomization failed")
+          `uvm_fatal("RAND", "axi_smoke_seq randomization failed")
         finish_item(tr);
       end
     endtask
   endclass
 
   class axi_cov_guided_seq extends uvm_sequence #(axi_txn);
-    \`uvm_object_utils(axi_cov_guided_seq)
+    `uvm_object_utils(axi_cov_guided_seq)
     function new(string name="axi_cov_guided_seq");
       super.new(name);
     endfunction
@@ -439,14 +439,14 @@ package axi_ucie_tb_pkg;
           if (bias_read && !bias_write) kind == AXI_READ;
           if (bias_write && !bias_read) kind == AXI_WRITE;
         })
-          \`uvm_fatal("RAND", "axi_cov_guided_seq randomization failed")
+          `uvm_fatal("RAND", "axi_cov_guided_seq randomization failed")
         finish_item(tr);
       end
     endtask
   endclass
 
   class axi_ucie_smoke_test extends uvm_test;
-    \`uvm_component_utils(axi_ucie_smoke_test)
+    `uvm_component_utils(axi_ucie_smoke_test)
     axi_ucie_env env;
     function new(string name, uvm_component parent);
       super.new(name, parent);
@@ -465,7 +465,7 @@ package axi_ucie_tb_pkg;
   endclass
 
   class axi_ucie_cov_guided_test extends uvm_test;
-    \`uvm_component_utils(axi_ucie_cov_guided_test)
+    `uvm_component_utils(axi_ucie_cov_guided_test)
     axi_ucie_env env;
     function new(string name, uvm_component parent);
       super.new(name, parent);
