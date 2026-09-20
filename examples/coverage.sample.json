@@ -3,6 +3,8 @@
     "kind.read": 14,
     "kind.write": 18,
     "strobe.partial": 0,
+    "size.byte": 0,
+    "size.halfword": 5,
     "len.medium": 3,
     "len.long": 0,
     "burst.fixed": 0,
