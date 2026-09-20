@@ -13,12 +13,27 @@ SPEC.loader.exec_module(coverage_feedback)
 class CoverageFeedbackTests(unittest.TestCase):
     def test_object_form_and_bias_mapping(self):
         bins = coverage_feedback.normalize_bins(
-            {"bins": {"len.long": 0, "kind.read": 4, "burst.fixed": 0}}
+            {
+                "bins": {
+                    "len.long": 0,
+                    "kind.read": 4,
+                    "burst.fixed": 0,
+                    "size.byte": 0,
+                    "size.halfword": 3,
+                }
+            }
         )
         result = coverage_feedback.build_bias(bins)
-        self.assertEqual(result["uncovered_bins"], ["burst.fixed", "len.long"])
-        self.assertEqual(result["bias_knobs"], ["BIAS_FIXED", "BIAS_LONG"])
-        self.assertEqual(result["plusargs"], ["+BIAS_FIXED=1", "+BIAS_LONG=1"])
+        self.assertEqual(
+            result["uncovered_bins"], ["burst.fixed", "len.long", "size.byte"]
+        )
+        self.assertEqual(
+            result["bias_knobs"], ["BIAS_FIXED", "BIAS_LONG", "BIAS_NARROW"]
+        )
+        self.assertEqual(
+            result["plusargs"],
+            ["+BIAS_FIXED=1", "+BIAS_LONG=1", "+BIAS_NARROW=1"],
+        )
 
     def test_list_form(self):
         bins = coverage_feedback.normalize_bins(
