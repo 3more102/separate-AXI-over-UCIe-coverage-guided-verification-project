@@ -22,7 +22,7 @@ This makes transport latency and backpressure non-golden: only end-to-end AXI se
 - axi_driver: sequential read/write AXI master driver.
 - axi_monitor: reconstructs completed write and read transactions.
 - axi_scoreboard: compares source-side and destination-side semantics.
-- axi_coverage: samples operation, burst length class, burst type, transfer size, full-vs-partial write strobes, and a key cross.
+- axi_coverage: samples operation, burst length class, burst type, transfer size, full-vs-partial write strobes, operation x length x burst, and operation x size x burst crosses.
 - axi_smoke_seq: small mixed read/write sequence.
 - axi_cov_guided_seq: larger sequence accepting next-run bias plusargs.
 
