@@ -31,7 +31,7 @@ The repository currently contains:
 | AXI response backpressure | Covered | Cross with bursts and IDs |
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
-| Partial write | Packetized RTL smoke + abstract model | UVM coverage-guided partial-write sequence |
+| Partial write | Packetized RTL smoke + abstract model + UVM guided WSTRB stimulus/coverage | Cross with burst length and link stalls |
 | Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
@@ -40,7 +40,7 @@ The repository currently contains:
 
 ## UVM coverage layer
 
-The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, and the operation x length x burst cross. Narrow byte/halfword lane/strobe mapping is intentionally deferred until it is modeled correctly. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, and BIAS_WRITE plusargs.
+The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, full-vs-partial write strobes, and the operation x length x burst cross. Partial strobes are generated within full-width writes; narrow byte/halfword transfer lane mapping remains intentionally deferred until it is modeled correctly. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, BIAS_WRITE, and BIAS_PARTIAL plusargs.
 
 The next UVM expansion should cover address
 alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
@@ -49,6 +49,7 @@ link stalls, response type, retry/error class, and reset timing.
 High-value crosses include:
 
 - operation x burst length x link stall
+- partial strobe x burst length x link stall
 - ID x outstanding depth
 - response x operation
 - reset timing x channel state
