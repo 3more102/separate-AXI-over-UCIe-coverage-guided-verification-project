@@ -17,7 +17,7 @@ UCIe PHY/Adapter compliance.
 - Coverage-guided UCB1 planner.
 - Paired baseline-vs-guided multi-seed experiment harness.
 - Coverage-hole to next-run plusarg bias helper.
-- UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, covergroups, and a coverage-guided sequence.
+- UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, byte/halfword/full-width transfer coverage, and a coverage-guided sequence.
 - Python unit tests, Icarus packet smoke/lint, Verilator burst-reference smoke, and GitHub Actions CI.
 
 ## Repository layout
@@ -81,7 +81,7 @@ Coverage-guided UVM run, after choosing bias knobs:
 
 ## Current boundary
 
-The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel now exercises multi-beat AXI channel transport and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
+The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel exercises multi-beat AXI channel transport, naturally aligned byte/halfword/full-width transfers, lane-correct write strobes, and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, unaligned transfers, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
 
 See docs/VERIFICATION_PLAN.md for the implementation matrix and next steps.
 See docs/EXPERIMENT.md for the paired experiment methodology and interpretation limits.
