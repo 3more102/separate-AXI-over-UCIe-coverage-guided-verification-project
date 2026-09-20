@@ -17,7 +17,7 @@ UCIe PHY/Adapter compliance.
 - Coverage-guided UCB1 planner.
 - Paired baseline-vs-guided multi-seed experiment harness.
 - Coverage-hole to next-run plusarg bias helper.
-- UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, covergroups, and a coverage-guided sequence.
+- UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, narrow/full-width transfer coverage, partial-write coverage, and a coverage-guided sequence.
 - Python unit tests, Icarus packet smoke/lint, Verilator burst-reference smoke, and GitHub Actions CI.
 
 ## Repository layout
@@ -44,6 +44,7 @@ Open-source RTL checks:
     make -C sim lint
     make -C sim smoke
     make -C sim reference-smoke
+    make -C sim narrow-smoke
 
 Python tests:
 
@@ -77,7 +78,7 @@ Optional Questa/UVM smoke:
 
 Coverage-guided UVM run, after choosing bias knobs:
 
-    make -C sim questa-guided UVM_SEED=42 UVM_PLUSARGS="+BIAS_LONG=1 +BIAS_FIXED=1"
+    make -C sim questa-guided UVM_SEED=42 UVM_PLUSARGS="+BIAS_LONG=1 +BIAS_FIXED=1 +BIAS_NARROW=1"
 
 ## Current boundary
 
