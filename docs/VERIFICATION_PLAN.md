@@ -17,27 +17,31 @@ The repository currently contains:
 - A deterministic Python transaction/link model.
 - Coverage-guided scenario selection using a UCB1 planner.
 - Coverage JSON to next-run bias conversion.
+- UVM AXI driver/sequencer, dual monitors, semantic end-to-end scoreboard, covergroups, and coverage-guided sequence running against a separate burst-capable channel-tunnel reference DUT.
 - Python unit tests and an Icarus-based smoke/lint flow.
-- GitHub Actions CI that runs all of the above.
+- GitHub Actions CI for the open-source flow; Questa/UVM is an optional local target.
 
 ## Verification matrix
 
 | Area | Current | Next |
 | --- | --- | --- |
-| AXI read/write | Single beat | Full multi-beat |
-| AW/W decoupling | Covered | Randomized timing expansion |
+| Packetized AXI read/write RTL | Single beat | Full multi-beat packetization |
+| UVM methodology path | Burst-capable reference tunnel + scoreboard | Connect to packetized bridge/link agent |
+| AW/W decoupling | Covered in packetized smoke | Randomized timing expansion |
 | AXI response backpressure | Covered | Cross with bursts and IDs |
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
 | Partial write | Abstract model | RTL smoke and UVM sequence |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
-| Functional coverage | Abstract bins + feedback | Simulator covergroups and crosses |
+| Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
 | Assertions | Ready/valid stability | Ordering, burst legality, liveness |
 
-## Coverage targets for the UVM milestone
+## UVM coverage layer
 
-The UVM environment should cover operation, burst length/type, size, address
+The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, transfer size, and the operation x length x burst cross. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, and BIAS_WRITE plusargs.
+
+The next UVM expansion should cover address
 alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
 link stalls, response type, retry/error class, and reset timing.
 
@@ -70,6 +74,6 @@ read data ordering.
 1. Packetize full AXI INCR/FIXED/WRAP bursts.
 2. Add configurable multiple outstanding transactions.
 3. Add ID-aware reorder checking.
-4. Build UVM AXI and link agents plus scoreboard and coverage subscriber.
+4. Replace the reference channel tunnel in the UVM top with the packetized AXI-over-UCIe bridge plus a dedicated link agent.
 5. Add link fault injection and retry/status modeling.
-6. Export simulator coverage into the neutral JSON feedback path.
+6. Export and merge simulator coverage into the neutral JSON feedback path.
