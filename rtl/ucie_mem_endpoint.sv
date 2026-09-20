@@ -8,6 +8,12 @@ module ucie_mem_endpoint #(
   input  logic                  rst_n,
   input  logic                  allow_req,
 
+  // Verification-only response injection. When asserted for an accepted
+  // request, the endpoint returns inject_resp and suppresses memory side
+  // effects for writes.
+  input  logic                  inject_error,
+  input  logic [1:0]            inject_resp,
+
   input  logic                  req_valid,
   output logic                  req_ready,
   input  logic                  req_write,
@@ -52,15 +58,19 @@ module ucie_mem_endpoint #(
         rsp_valid <= 1'b1;
         rsp_write <= req_write;
         rsp_id    <= req_id;
-        rsp_resp  <= 2'b00;
+        rsp_resp  <= inject_error ? inject_resp : 2'b00;
 
         if (req_write) begin
-          for (lane = 0; lane < BYTE_LANES; lane = lane + 1)
-            if (req_wstrb[lane])
-              mem[req_index][8*lane +: 8] <= req_wdata[8*lane +: 8];
+          // The injected-error mode models a rejected downstream operation:
+          // return an AXI error response without changing endpoint memory.
+          if (!inject_error) begin
+            for (lane = 0; lane < BYTE_LANES; lane = lane + 1)
+              if (req_wstrb[lane])
+                mem[req_index][8*lane +: 8] <= req_wdata[8*lane +: 8];
+          end
           rsp_rdata <= '0;
         end else begin
-          rsp_rdata <= mem[req_index];
+          rsp_rdata <= inject_error ? '0 : mem[req_index];
         end
       end
     end
