@@ -25,9 +25,8 @@ package axi_ucie_tb_pkg;
          bit [1:0] resp_q[$];
 
     constraint c_len   { len inside {[0:15]}; }
-    // Keep M0 traffic full-width: the current memory model does not yet
-    // implement AXI narrow-transfer lane placement/strobe semantics.
-    constraint c_size  { size == AXI_FULL_SIZE; }
+    // Exercise naturally aligned narrow transfers through full-width beats.
+    constraint c_size  { size inside {[0:AXI_FULL_SIZE]}; }
     constraint c_burst { burst inside {2'b00, 2'b01}; }
     constraint c_addr  {
       addr inside {[0:3840]};
@@ -349,9 +348,12 @@ package axi_ucie_tb_pkg;
         bins incr  = {2'b01};
       }
       cp_size: coverpoint sample_size {
+        bins byte       = {0};
+        bins halfword   = {1};
         bins full_width = {AXI_FULL_SIZE};
       }
       kind_x_len_x_burst: cross cp_kind, cp_len, cp_burst;
+      kind_x_size_x_burst: cross cp_kind, cp_size, cp_burst;
     endgroup
 
     function new(string name, uvm_component parent);
