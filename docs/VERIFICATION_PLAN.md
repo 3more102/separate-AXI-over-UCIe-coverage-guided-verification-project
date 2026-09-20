@@ -33,6 +33,7 @@ The repository currently contains:
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
 | Partial write | Abstract model | RTL smoke and UVM sequence |
+| Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
 | Functional coverage | Abstract bins + hit counts + feedback + UVM covergroups | Export/merge simulator coverage |
@@ -40,7 +41,7 @@ The repository currently contains:
 
 ## UVM coverage layer
 
-The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, transfer size, and the operation x length x burst cross. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, and BIAS_WRITE plusargs.
+The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, and the operation x length x burst cross. Narrow byte/halfword lane/strobe mapping is intentionally deferred until it is modeled correctly. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, and BIAS_WRITE plusargs.
 
 The next UVM expansion should cover address
 alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
@@ -72,7 +73,7 @@ read data ordering.
 5. Apply the bias only to future stimulus probabilities.
 6. Never change checkers, assertions, or pass/fail policy based on coverage.
 
-The open-source `make -C sim all` flow now executes steps 1-4 using
+The open-source `make -C sim all` flow executes steps 1-4 using
 `build/guided_regression.json` as the input to
 `build/next_bias.json`. The same feedback helper also accepts UVM-shaped bin
 names. Abstract `op.read` and `op.write` are aliases for the UVM
@@ -80,7 +81,7 @@ read/write bias knobs.
 
 ## Next implementation milestone
 
-1. Packetize full AXI INCR/FIXED/WRAP bursts.
+1. Packetize full AXI INCR/FIXED/WRAP bursts and add legal narrow-transfer lane mapping.
 2. Add configurable multiple outstanding transactions.
 3. Add ID-aware reorder checking.
 4. Replace the reference channel tunnel in the UVM top with the packetized AXI-over-UCIe bridge plus a dedicated link agent.

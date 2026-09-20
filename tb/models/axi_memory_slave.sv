@@ -100,7 +100,8 @@ module axi_memory_slave #(
           wr_active     <= 1'b0;
           wr_beats_left <= '0;
           bid_q         <= wr_id;
-          bresp_q       <= 2'b00;
+          // AXI requires WLAST to coincide with the AWLEN-derived final beat.
+          bresp_q       <= (axi.wlast == (wr_beats_left == 9'd1)) ? 2'b00 : 2'b10;
           bvalid_q      <= 1'b1;
         end else begin
           if (wr_burst == 2'b01)

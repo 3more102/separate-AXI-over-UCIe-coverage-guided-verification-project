@@ -6,6 +6,7 @@ package axi_ucie_tb_pkg;
   parameter int AXI_ADDR_W = 32;
   parameter int AXI_DATA_W = 32;
   parameter int AXI_STRB_W = AXI_DATA_W/8;
+  localparam int AXI_FULL_SIZE = $clog2(AXI_STRB_W);
 
   typedef virtual axi_if #(AXI_ID_W, AXI_ADDR_W, AXI_DATA_W) axi_vif_t;
 
@@ -24,7 +25,9 @@ package axi_ucie_tb_pkg;
          bit [1:0] resp_q[$];
 
     constraint c_len   { len inside {[0:15]}; }
-    constraint c_size  { size inside {[0:2]}; }
+    // Keep M0 traffic full-width: the current memory model does not yet
+    // implement AXI narrow-transfer lane placement/strobe semantics.
+    constraint c_size  { size == AXI_FULL_SIZE; }
     constraint c_burst { burst inside {2'b00, 2'b01}; }
     constraint c_addr  {
       addr inside {[0:3840]};
@@ -348,9 +351,7 @@ package axi_ucie_tb_pkg;
         bins incr  = {2'b01};
       }
       cp_size: coverpoint sample_size {
-        bins byte = {0};
-        bins half = {1};
-        bins word = {2};
+        bins full_width = {AXI_FULL_SIZE};
       }
       kind_x_len_x_burst: cross cp_kind, cp_len, cp_burst;
     endgroup
