@@ -148,6 +148,81 @@ module reference_smoke_tb;
     end
   endtask
 
+  task automatic axi_write1(
+    input logic [ADDR_W-1:0] addr,
+    input logic [2:0] size,
+    input logic [ID_W-1:0] id,
+    input logic [DATA_W-1:0] data,
+    input logic [DATA_W/8-1:0] strb
+  );
+    begin
+      @(negedge clk);
+      src_if.awid    = id;
+      src_if.awaddr  = addr;
+      src_if.awlen   = 8'd0;
+      src_if.awsize  = size;
+      src_if.awburst = 2'b01;
+      src_if.awvalid = 1'b1;
+
+      do @(posedge clk); while (!src_if.awready);
+      @(negedge clk);
+      src_if.awvalid = 1'b0;
+
+      src_if.wdata  = data;
+      src_if.wstrb  = strb;
+      src_if.wlast  = 1'b1;
+      src_if.wvalid = 1'b1;
+      do @(posedge clk); while (!src_if.wready);
+      @(negedge clk);
+      src_if.wvalid = 1'b0;
+
+      src_if.bready = 1'b1;
+      do @(posedge clk); while (!src_if.bvalid);
+      if (src_if.bid !== id)
+        fail($sformatf("BID mismatch exp=%0h got=%0h", id, src_if.bid));
+      if (src_if.bresp !== 2'b00)
+        fail($sformatf("BRESP not OKAY: %0b", src_if.bresp));
+      @(negedge clk);
+      src_if.bready = 1'b0;
+    end
+  endtask
+
+  task automatic axi_read1_expect_mask(
+    input logic [ADDR_W-1:0] addr,
+    input logic [2:0] size,
+    input logic [ID_W-1:0] id,
+    input logic [DATA_W-1:0] mask,
+    input logic [DATA_W-1:0] expected
+  );
+    begin
+      @(negedge clk);
+      src_if.arid    = id;
+      src_if.araddr  = addr;
+      src_if.arlen   = 8'd0;
+      src_if.arsize  = size;
+      src_if.arburst = 2'b01;
+      src_if.arvalid = 1'b1;
+
+      do @(posedge clk); while (!src_if.arready);
+      @(negedge clk);
+      src_if.arvalid = 1'b0;
+      src_if.rready  = 1'b1;
+
+      do @(posedge clk); while (!src_if.rvalid);
+      if (src_if.rid !== id)
+        fail($sformatf("RID mismatch exp=%0h got=%0h", id, src_if.rid));
+      if (src_if.rresp !== 2'b00)
+        fail($sformatf("RRESP not OKAY: %0b", src_if.rresp));
+      if ((src_if.rdata & mask) !== (expected & mask))
+        fail($sformatf("Masked RDATA mismatch mask=%h exp=%h got=%h",
+                       mask, expected & mask, src_if.rdata & mask));
+      if (src_if.rlast !== 1'b1)
+        fail("Single-beat read did not assert RLAST");
+      @(negedge clk);
+      src_if.rready = 1'b0;
+    end
+  endtask
+
   initial begin
     src_if.awid = '0;
     src_if.awaddr = '0;
@@ -190,6 +265,23 @@ module reference_smoke_tb;
     axi_read4_expect(
       32'h0000_0080, 2'b00, 4'h6,
       32'hDDDD_0004, 32'hDDDD_0004, 32'hDDDD_0004, 32'hDDDD_0004
+    );
+
+    $display("TEST: narrow byte/halfword accesses map to AXI byte lanes");
+    axi_write1(32'h0000_0100, 3'd2, 4'h7, 32'h1122_3344, 4'b1111);
+    axi_write1(32'h0000_0101, 3'd0, 4'h8, 32'h0000_AA00, 4'b0010);
+    axi_write1(32'h0000_0102, 3'd1, 4'h9, 32'hBEEF_0000, 4'b1100);
+
+    // A full-width read proves the narrow writes hit byte addresses 0x101-0x103.
+    axi_read1_expect_mask(
+      32'h0000_0100, 3'd2, 4'hA, 32'hFFFF_FFFF, 32'hBEEF_AA44
+    );
+    // Narrow reads must return the addressed bytes on their addressed lanes.
+    axi_read1_expect_mask(
+      32'h0000_0101, 3'd0, 4'hB, 32'h0000_FF00, 32'h0000_AA00
+    );
+    axi_read1_expect_mask(
+      32'h0000_0102, 3'd1, 4'hC, 32'hFFFF_0000, 32'hBEEF_0000
     );
 
     if (errors == 0) begin
