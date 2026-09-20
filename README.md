@@ -16,6 +16,7 @@ UCIe PHY/Adapter compliance.
 - Deterministic abstract transport model with retry/error scenarios.
 - Coverage-guided UCB1 planner.
 - Coverage-hole to next-run plusarg bias helper.
+- UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, covergroups, and a coverage-guided sequence.
 - Python unit tests, Icarus smoke/lint, and GitHub Actions CI.
 
 ## Repository layout
@@ -25,6 +26,8 @@ UCIe PHY/Adapter compliance.
     tb/assertions/       Protocol SVA
     tb/models/           Testbench models
     tb/smoke/            Open-source executable smoke test
+    tb/axi_ucie_tb_pkg.sv UVM components, sequences, scoreboard, coverage
+    tb/tb_top.sv          UVM top using a burst-capable channel tunnel
     python/cgverif/      Abstract model and coverage-guided planner
     tests/               Python unit tests
     examples/            Example coverage input
@@ -60,12 +63,16 @@ Run the complete local open-source verification set with:
 
     make -C sim all
 
+Optional Questa/UVM smoke:
+
+    make -C sim questa UVM_TEST=axi_ucie_smoke_test UVM_SEED=1
+
+Coverage-guided UVM run, after choosing bias knobs:
+
+    make -C sim questa-guided UVM_SEED=42 UVM_PLUSARGS="+BIAS_LONG=1 +BIAS_FIXED=1"
+
 ## Current boundary
 
-The RTL milestone supports one AXI data beat per request. Multi-beat bursts,
-multiple outstanding transactions, out-of-order completion, and detailed UCIe
-retry/CRC behavior are the next RTL/UVM milestones. The abstract Python model
-already exercises credit stalls, CRC retry, timeout retry, reset recovery, and
-coverage-guided scenario selection.
+The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel now exercises multi-beat AXI channel transport and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
 
 See docs/VERIFICATION_PLAN.md for the implementation matrix and next steps.
