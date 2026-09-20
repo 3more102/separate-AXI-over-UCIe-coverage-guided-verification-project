@@ -19,21 +19,22 @@ class CoverageFeedbackTests(unittest.TestCase):
                     "kind.read": 4,
                     "burst.fixed": 0,
                     "strobe.partial": 0,
+                    "size.narrow": 0,
                 }
             }
         )
         result = coverage_feedback.build_bias(bins)
         self.assertEqual(
             result["uncovered_bins"],
-            ["burst.fixed", "len.long", "strobe.partial"],
+            ["burst.fixed", "len.long", "size.narrow", "strobe.partial"],
         )
         self.assertEqual(
             result["bias_knobs"],
-            ["BIAS_FIXED", "BIAS_LONG", "BIAS_PARTIAL"],
+            ["BIAS_FIXED", "BIAS_LONG", "BIAS_NARROW", "BIAS_PARTIAL"],
         )
         self.assertEqual(
             result["plusargs"],
-            ["+BIAS_FIXED=1", "+BIAS_LONG=1", "+BIAS_PARTIAL=1"],
+            ["+BIAS_FIXED=1", "+BIAS_LONG=1", "+BIAS_NARROW=1", "+BIAS_PARTIAL=1"],
         )
 
     def test_list_form(self):
