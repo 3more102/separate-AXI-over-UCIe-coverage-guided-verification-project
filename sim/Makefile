@@ -3,9 +3,9 @@ VVP      ?= vvp
 PYTHON   ?= python3
 BUILD    ?= build
 
-.PHONY: all smoke lint py-test clean
+.PHONY: all smoke lint py-test regress feedback clean
 
-all: lint py-test smoke
+all: lint py-test smoke regress feedback
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -18,7 +18,17 @@ smoke: | $(BUILD)
 	$(VVP) $(BUILD)/smoke.vvp
 
 py-test:
-	cd .. && $(PYTHON) -m unittest scripts.test_coverage_feedback
+	cd .. && PYTHONPATH=python $(PYTHON) -m unittest discover -s tests -p "test_*.py"
+
+regress:
+	cd .. && mkdir -p build && PYTHONPATH=python $(PYTHON) -m cgverif.regress \
+		--mode guided --iterations 24 --transactions 8 --seed 1 \
+		--out build/guided_regression.json
+
+feedback:
+	cd .. && mkdir -p build && $(PYTHON) scripts/coverage_feedback.py \
+		--input examples/coverage.sample.json \
+		--output build/next_bias.json
 
 clean:
-	rm -rf $(BUILD)
+	rm -rf $(BUILD) ../build
