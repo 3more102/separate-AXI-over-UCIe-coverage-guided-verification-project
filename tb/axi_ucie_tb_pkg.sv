@@ -367,6 +367,7 @@ package axi_ucie_tb_pkg;
         bins partial = {1};
       }
       kind_x_len_x_burst: cross cp_kind, cp_len, cp_burst;
+      kind_x_size_x_burst: cross cp_kind, cp_size, cp_burst;
     endgroup
 
     function automatic bit [AXI_STRB_W-1:0] legal_strb_mask(
