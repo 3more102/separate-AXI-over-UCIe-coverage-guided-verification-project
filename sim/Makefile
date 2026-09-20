@@ -1,5 +1,6 @@
 IVERILOG ?= iverilog
 VVP      ?= vvp
+VERILATOR ?= verilator
 PYTHON   ?= python3
 BUILD    ?= build
 
@@ -10,9 +11,9 @@ UVM_SEED      ?= 1
 UVM_TXN_COUNT ?= 100
 UVM_PLUSARGS  ?=
 
-.PHONY: all smoke lint py-test regress experiment feedback questa questa-guided clean
+.PHONY: all smoke reference-smoke lint py-test regress experiment feedback questa questa-guided clean
 
-all: lint py-test smoke regress experiment feedback
+all: lint py-test smoke reference-smoke regress experiment feedback
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -23,6 +24,16 @@ lint: | $(BUILD)
 smoke: | $(BUILD)
 	$(IVERILOG) -g2012 -Wall -s smoke_tb -o $(BUILD)/smoke.vvp -f files_smoke.f
 	$(VVP) $(BUILD)/smoke.vvp
+
+reference-smoke: | $(BUILD)
+	$(VERILATOR) --binary --timing -Wall -Wno-fatal \
+		--top-module reference_smoke_tb \
+		-Mdir $(BUILD)/vlt_reference -o reference_smoke \
+		../tb/interfaces/axi_if.sv \
+		../rtl/axi_ucie_reference_dut.sv \
+		../tb/models/axi_memory_slave.sv \
+		../tb/reference_smoke_tb.sv
+	./$(BUILD)/vlt_reference/reference_smoke
 
 py-test:
 	cd .. && PYTHONPATH=python $(PYTHON) -m unittest discover -s tests -p "test_*.py"
