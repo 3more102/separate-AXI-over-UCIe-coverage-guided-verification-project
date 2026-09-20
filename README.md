@@ -15,6 +15,7 @@ UCIe PHY/Adapter compliance.
 - AXI ready/valid stability assertions.
 - Deterministic abstract transport model with retry/error scenarios.
 - Coverage-guided UCB1 planner.
+- Paired baseline-vs-guided multi-seed experiment harness.
 - Coverage-hole to next-run plusarg bias helper.
 - UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, covergroups, and a coverage-guided sequence.
 - Python unit tests, Icarus smoke/lint, and GitHub Actions CI.
@@ -33,7 +34,7 @@ UCIe PHY/Adapter compliance.
     examples/            Example coverage input
     scripts/             Coverage feedback helper
     sim/                 Build targets and file lists
-    docs/                Verification plan
+    docs/                Verification plan and experiment notes
     .github/workflows/   Continuous integration
 
 ## Quick start
@@ -52,6 +53,12 @@ Coverage-guided abstract regression:
     PYTHONPATH=python python3 -m cgverif.regress \
       --mode guided --iterations 32 --transactions 16 --seed 1 \
       --out build/guided_regression.json
+
+Paired baseline-vs-guided experiment:
+
+    PYTHONPATH=python python3 -m cgverif.experiment \
+      --runs 20 --iterations 32 --transactions 16 --seed 1 \
+      --out build/experiment.json
 
 Coverage feedback:
 
@@ -76,3 +83,4 @@ Coverage-guided UVM run, after choosing bias knobs:
 The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel now exercises multi-beat AXI channel transport and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
 
 See docs/VERIFICATION_PLAN.md for the implementation matrix and next steps.
+See docs/EXPERIMENT.md for the paired experiment methodology and interpretation limits.
