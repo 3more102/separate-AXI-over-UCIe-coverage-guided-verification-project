@@ -81,8 +81,20 @@ module axi_ucie_bridge #(
 
   logic                inflight;
 
-  assign s_axi_awready = rst_n && !aw_full;
-  assign s_axi_wready  = rst_n && !w_full;
+  logic                write_drop_active;
+  logic [8:0]          write_drop_left;
+  logic [ID_W-1:0]     write_error_id;
+
+  logic                read_error_active;
+  logic [8:0]          read_error_left;
+
+  assign s_axi_awready =
+      rst_n && !aw_full && !write_drop_active && !s_axi_bvalid;
+
+  assign s_axi_wready =
+      rst_n && !s_axi_bvalid &&
+      (write_drop_active ? 1'b1 : !w_full);
+
   assign s_axi_arready = rst_n && !ar_full;
 
   assign link_rsp_ready =
@@ -92,10 +104,16 @@ module axi_ucie_bridge #(
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      aw_full        <= 1'b0;
-      w_full         <= 1'b0;
-      ar_full        <= 1'b0;
-      inflight       <= 1'b0;
+      aw_full          <= 1'b0;
+      w_full           <= 1'b0;
+      ar_full          <= 1'b0;
+      inflight         <= 1'b0;
+      write_drop_active <= 1'b0;
+      write_drop_left   <= '0;
+      write_error_id    <= '0;
+      read_error_active <= 1'b0;
+      read_error_left   <= '0;
+
       link_req_valid <= 1'b0;
       link_req_write <= 1'b0;
       link_req_id    <= '0;
@@ -104,9 +122,11 @@ module axi_ucie_bridge #(
       link_req_size  <= '0;
       link_req_wdata <= '0;
       link_req_wstrb <= '0;
+
       s_axi_bid      <= '0;
       s_axi_bresp    <= '0;
       s_axi_bvalid   <= 1'b0;
+
       s_axi_rid      <= '0;
       s_axi_rdata    <= '0;
       s_axi_rresp    <= '0;
@@ -117,8 +137,21 @@ module axi_ucie_bridge #(
         s_axi_bvalid <= 1'b0;
 
       if (s_axi_rvalid && s_axi_rready) begin
-        s_axi_rvalid <= 1'b0;
-        s_axi_rlast  <= 1'b0;
+        if (read_error_active) begin
+          if (read_error_left > 9'd1) begin
+            read_error_left <= read_error_left - 9'd1;
+            s_axi_rvalid    <= 1'b1;
+            s_axi_rlast     <= (read_error_left == 9'd2);
+          end else begin
+            read_error_active <= 1'b0;
+            read_error_left   <= '0;
+            s_axi_rvalid      <= 1'b0;
+            s_axi_rlast       <= 1'b0;
+          end
+        end else begin
+          s_axi_rvalid <= 1'b0;
+          s_axi_rlast  <= 1'b0;
+        end
       end
 
       if (s_axi_awvalid && s_axi_awready) begin
@@ -130,11 +163,23 @@ module axi_ucie_bridge #(
         aw_burst_q <= s_axi_awburst;
       end
 
-      if (s_axi_wvalid && s_axi_wready) begin
+      if (!write_drop_active && s_axi_wvalid && s_axi_wready) begin
         w_full   <= 1'b1;
         w_data_q <= s_axi_wdata;
         w_strb_q <= s_axi_wstrb;
         w_last_q <= s_axi_wlast;
+      end
+
+      if (write_drop_active && s_axi_wvalid && s_axi_wready) begin
+        if (s_axi_wlast || (write_drop_left == 9'd1)) begin
+          write_drop_active <= 1'b0;
+          write_drop_left   <= '0;
+          s_axi_bid          <= write_error_id;
+          s_axi_bresp        <= RESP_SLVERR;
+          s_axi_bvalid       <= 1'b1;
+        end else begin
+          write_drop_left <= write_drop_left - 9'd1;
+        end
       end
 
       if (s_axi_arvalid && s_axi_arready) begin
@@ -166,12 +211,24 @@ module axi_ucie_bridge #(
         end
       end
 
-      if (!link_req_valid && !inflight && !s_axi_bvalid && !s_axi_rvalid) begin
+      if (!link_req_valid && !inflight &&
+          !write_drop_active && !read_error_active &&
+          !s_axi_bvalid && !s_axi_rvalid) begin
         if (aw_full && w_full) begin
           aw_full <= 1'b0;
           w_full  <= 1'b0;
 
-          if ((aw_len_q != 8'd0) || !w_last_q) begin
+          if (aw_len_q != 8'd0) begin
+            write_error_id <= aw_id_q;
+            if (w_last_q) begin
+              s_axi_bid    <= aw_id_q;
+              s_axi_bresp  <= RESP_SLVERR;
+              s_axi_bvalid <= 1'b1;
+            end else begin
+              write_drop_active <= 1'b1;
+              write_drop_left   <= {1'b0, aw_len_q};
+            end
+          end else if (!w_last_q) begin
             s_axi_bid    <= aw_id_q;
             s_axi_bresp  <= RESP_SLVERR;
             s_axi_bvalid <= 1'b1;
@@ -189,11 +246,13 @@ module axi_ucie_bridge #(
           ar_full <= 1'b0;
 
           if (ar_len_q != 8'd0) begin
-            s_axi_rid    <= ar_id_q;
-            s_axi_rdata  <= '0;
-            s_axi_rresp  <= RESP_SLVERR;
-            s_axi_rlast  <= 1'b1;
-            s_axi_rvalid <= 1'b1;
+            read_error_active <= 1'b1;
+            read_error_left   <= {1'b0, ar_len_q} + 9'd1;
+            s_axi_rid         <= ar_id_q;
+            s_axi_rdata       <= '0;
+            s_axi_rresp       <= RESP_SLVERR;
+            s_axi_rlast       <= (ar_len_q == 8'd0);
+            s_axi_rvalid      <= 1'b1;
           end else begin
             link_req_valid <= 1'b1;
             link_req_write <= 1'b0;
@@ -209,8 +268,7 @@ module axi_ucie_bridge #(
     end
   end
 
-  // Burst type is captured for future multi-beat support. The milestone-1
-  // datapath accepts single-beat requests only.
+  // Burst type is captured for future multi-beat transport support.
   logic _unused;
   always_comb _unused = ^{aw_burst_q, ar_burst_q};
 
