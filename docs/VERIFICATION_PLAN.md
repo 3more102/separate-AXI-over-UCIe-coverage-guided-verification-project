@@ -17,7 +17,7 @@ The repository currently contains:
 - A deterministic Python transaction/link model.
 - Coverage-guided scenario selection using a UCB1 planner.
 - Coverage JSON to next-run bias conversion.
-- UVM AXI driver/sequencer, dual monitors, semantic end-to-end scoreboard, covergroups, and coverage-guided sequence running against a separate burst-capable channel-tunnel reference DUT.
+- UVM AXI driver/sequencer, dual monitors, end-to-end transport scoreboard, byte-accurate memory semantics scoreboard, covergroups, coverage-guided sequence, and a directed INCR/FIXED burst semantics test running against a separate burst-capable channel-tunnel reference DUT.
 - Python unit tests and an Icarus-based smoke/lint flow.
 - GitHub Actions CI for the open-source flow; Questa/UVM is an optional local target.
 
@@ -26,7 +26,7 @@ The repository currently contains:
 | Area | Current | Next |
 | --- | --- | --- |
 | Packetized AXI read/write RTL | Single beat | Full multi-beat packetization |
-| UVM methodology path | Burst-capable reference tunnel + scoreboard | Connect to packetized bridge/link agent |
+| UVM methodology path | Burst-capable reference tunnel + transport scoreboard + memory semantics scoreboard | Connect to packetized bridge/link agent |
 | AW/W decoupling | Covered in packetized smoke | Randomized timing expansion |
 | AXI response backpressure | Covered | Cross with bursts and IDs |
 | Link request stall | Covered | Random stall distributions |
