@@ -10,7 +10,7 @@ UVM_SEED      ?= 1
 UVM_TXN_COUNT ?= 100
 UVM_PLUSARGS  ?=
 
-.PHONY: all smoke lint py-test regress feedback questa questa-guided clean
+.PHONY: all smoke lint py-test regress feedback questa questa-guided questa-memory clean
 
 all: lint py-test smoke regress feedback
 
@@ -51,6 +51,9 @@ questa:
 
 questa-guided:
 	$(MAKE) questa UVM_TEST=axi_ucie_cov_guided_test UVM_PLUSARGS="$(UVM_PLUSARGS)"
+
+questa-memory:
+	$(MAKE) questa UVM_TEST=axi_ucie_memory_semantics_test UVM_PLUSARGS="+NO_STALL $(UVM_PLUSARGS)"
 
 clean:
 	rm -rf $(BUILD) ../build work transcript vsim.wlf
