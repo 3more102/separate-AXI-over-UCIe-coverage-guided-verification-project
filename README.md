@@ -16,7 +16,7 @@ UCIe PHY/Adapter compliance.
 - Deterministic abstract transport model with retry/error scenarios.
 - Coverage-guided UCB1 planner.
 - Coverage-hole to next-run plusarg bias helper.
-- UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end semantic scoreboard, covergroups, and a coverage-guided sequence.
+- UVM methodology layer with AXI driver/sequencer, source/destination monitors, end-to-end transport scoreboard, byte-accurate memory semantics checker, covergroups, and coverage-guided plus directed sequences.
 - Python unit tests, Icarus smoke/lint, and GitHub Actions CI.
 
 ## Repository layout
@@ -70,6 +70,10 @@ Optional Questa/UVM smoke:
 Coverage-guided UVM run, after choosing bias knobs:
 
     make -C sim questa-guided UVM_SEED=42 UVM_PLUSARGS="+BIAS_LONG=1 +BIAS_FIXED=1"
+
+Directed INCR/FIXED memory-semantics check:
+
+    make -C sim questa-memory UVM_SEED=1
 
 ## Current boundary
 
