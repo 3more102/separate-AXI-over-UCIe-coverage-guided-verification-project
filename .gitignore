@@ -1,0 +1,12 @@
+build/
+obj_dir/
+work/
+transcript
+*.wlf
+*.ucdb
+*.vcd
+*.fst
+*.log
+__pycache__/
+*.pyc
+.coverage
