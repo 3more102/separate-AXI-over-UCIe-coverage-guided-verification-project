@@ -8,10 +8,11 @@ QUESTA        ?= vsim
 VLOG          ?= vlog
 UVM_TEST      ?= axi_ucie_smoke_test
 UVM_SEED      ?= 1
-UVM_TXN_COUNT ?= 100
-UVM_PLUSARGS  ?=
+UVM_TXN_COUNT     ?= 100
+UVM_PLUSARGS      ?=
+UVM_COVERAGE_JSON ?= ../build/uvm_coverage.json
 
-.PHONY: all smoke reference-smoke narrow-smoke lint py-test regress experiment feedback questa questa-guided clean
+.PHONY: all smoke reference-smoke narrow-smoke lint py-test regress experiment feedback feedback-uvm questa questa-guided questa-loop clean
 
 all: lint py-test smoke reference-smoke narrow-smoke regress experiment feedback
 
@@ -63,8 +64,14 @@ feedback:
 		--input examples/coverage.sample.json \
 		--output build/next_bias.json
 
+feedback-uvm:
+	cd .. && $(PYTHON) scripts/coverage_feedback.py \
+		--input build/uvm_coverage.json \
+		--output build/next_bias.json
+
 # Optional commercial-UVM flow. The default open-source CI does not require Questa.
 questa:
+	mkdir -p ../build
 	rm -rf work transcript vsim.wlf
 	vlib work
 	$(VLOG) -sv -L uvm -f files.f
@@ -72,11 +79,23 @@ questa:
 		+UVM_TESTNAME=$(UVM_TEST) \
 		+ntb_random_seed=$(UVM_SEED) \
 		+TXN_COUNT=$(UVM_TXN_COUNT) \
+		+COVERAGE_JSON=$(UVM_COVERAGE_JSON) \
 		$(UVM_PLUSARGS) \
 		-do "run -all; quit -f"
 
 questa-guided:
 	$(MAKE) questa UVM_TEST=axi_ucie_cov_guided_test UVM_PLUSARGS="$(UVM_PLUSARGS)"
+
+questa-loop:
+	$(MAKE) questa-guided
+	$(MAKE) feedback-uvm
+	@ARGS="$(cd .. && $(PYTHON) -c 'import json; print(" ".join(json.load(open("build/next_bias.json"))["plusargs"]))')"; \
+	if [ -n "$ARGS" ]; then \
+		echo "Coverage holes -> $ARGS"; \
+		$(MAKE) questa-guided UVM_PLUSARGS="$ARGS"; \
+	else \
+		echo "No mapped coverage holes; guided rerun skipped."; \
+	fi
 
 clean:
 	rm -rf $(BUILD) ../build work transcript vsim.wlf

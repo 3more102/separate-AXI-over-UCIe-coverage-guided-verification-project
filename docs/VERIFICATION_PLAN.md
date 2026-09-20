@@ -17,6 +17,7 @@ The repository currently contains:
 - A deterministic Python transaction/link model.
 - Coverage-guided scenario selection using a UCB1 planner.
 - Coverage JSON to next-run bias conversion.
+- Portable UVM per-bin JSON export plus an automatic two-pass feedback/rerun target.
 - UVM AXI driver/sequencer, dual monitors, semantic end-to-end scoreboard, covergroups, and coverage-guided sequence running against a separate burst-capable channel-tunnel reference DUT.
 - Python unit tests, an Icarus packet smoke/lint flow, and a Verilator burst-reference smoke.
 - GitHub Actions CI for the open-source flow; Questa/UVM is an optional local target.
@@ -35,7 +36,7 @@ The repository currently contains:
 | Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
-| Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
+| Functional coverage | Abstract bins + feedback + UVM covergroups + portable bin JSON | Native simulator coverage merge + cross-bin export |
 | Assertions | Ready/valid stability | Ordering, burst legality, liveness |
 
 ## UVM coverage layer
@@ -71,6 +72,11 @@ read data ordering.
 4. Apply the bias only to future stimulus probabilities.
 5. Never change checkers, assertions, or pass/fail policy based on coverage.
 
+For the UVM methodology path, `make -C sim questa-loop` now exports selected
+named bin counters, converts uncovered mapped bins (including partial writes)
+into bias plusargs, and runs a second guided pass only when useful. This portable
+JSON is intentionally separate from simulator-native coverage databases.
+
 ## Next implementation milestone
 
 1. Packetize full AXI INCR/FIXED/WRAP bursts and add legal narrow-transfer lane mapping.
@@ -78,4 +84,4 @@ read data ordering.
 3. Add ID-aware reorder checking.
 4. Replace the reference channel tunnel in the UVM top with the packetized AXI-over-UCIe bridge plus a dedicated link agent.
 5. Add link fault injection and retry/status modeling.
-6. Export and merge simulator coverage into the neutral JSON feedback path.
+6. Merge native simulator coverage and cross-bin data into the neutral JSON feedback path.
