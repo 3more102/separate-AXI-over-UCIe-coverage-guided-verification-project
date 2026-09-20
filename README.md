@@ -8,10 +8,11 @@ UCIe PHY/Adapter compliance.
 
 ## What is implemented
 
-- Single-beat AXI read/write bridge with independent AW/W buffering.
-- UCIe-style request/response transport and memory endpoint.
+- Single-outstanding AXI read/write bridge with independent AW/W buffering.
+- Per-beat packetization of AXI FIXED and INCR bursts onto the UCIe-style request/response link.
+- Byte-addressable link-side memory endpoint with write-strobe handling.
 - AXI/link backpressure scenarios and reset recovery smoke testing.
-- Local SLVERR for unsupported multi-beat requests.
+- Local SLVERR for unsupported WRAP/reserved burst types and oversized transfer sizes.
 - AXI ready/valid stability assertions.
 - Deterministic abstract transport model with retry/error scenarios.
 - Coverage-guided UCB1 planner.
@@ -78,9 +79,27 @@ Coverage-guided UVM run, after choosing bias knobs:
 
     make -C sim questa-guided UVM_SEED=42 UVM_PLUSARGS="+BIAS_LONG=1 +BIAS_FIXED=1"
 
+## Packetized RTL behavior
+
+The packetized bridge supports FIXED and INCR AXI bursts. It serializes each AXI
+beat into one link request and waits for the corresponding link response before
+advancing that transaction. A write burst produces one AXI B response after the
+final beat; a read burst produces one AXI R response per beat with RLAST on the
+final response. The current implementation intentionally keeps only one link
+request in flight at a time.
+
+WRAP and reserved burst types are rejected locally with SLVERR. The open-source
+smoke test covers multi-beat INCR and FIXED traffic, request stalls, AXI response
+backpressure, local rejection, and reset recovery.
+
 ## Current boundary
 
-The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel now exercises multi-beat AXI channel transport and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
+The packetized RTL now supports single-outstanding FIXED and INCR bursts, but it
+does not yet implement WRAP addressing, multiple outstanding transactions, or
+out-of-order completion. The UVM environment still uses a separate burst-capable
+channel tunnel for methodology development rather than the packetized bridge
+itself. Detailed UCIe retry/CRC behavior remains in the abstract Python model
+until a dedicated link agent/fault-injection layer is connected to the RTL path.
 
 See docs/VERIFICATION_PLAN.md for the implementation matrix and next steps.
 See docs/EXPERIMENT.md for the paired experiment methodology and interpretation limits.
