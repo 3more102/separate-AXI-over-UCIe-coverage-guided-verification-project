@@ -18,7 +18,7 @@ The repository currently contains:
 - Coverage-guided scenario selection using a UCB1 planner.
 - Coverage JSON to next-run bias conversion.
 - UVM AXI driver/sequencer, dual monitors, semantic end-to-end scoreboard, covergroups, and coverage-guided sequence running against a separate burst-capable channel-tunnel reference DUT.
-- Python unit tests, an Icarus packet smoke/lint flow, and a Verilator burst-reference smoke.
+- Python unit tests, an Icarus packet smoke/lint flow, and a Verilator burst/narrow-transfer reference smoke.
 - GitHub Actions CI for the open-source flow; Questa/UVM is an optional local target.
 
 ## Verification matrix
@@ -32,7 +32,7 @@ The repository currently contains:
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
 | Partial write | Packetized RTL smoke + abstract model | UVM coverage-guided partial-write sequence |
-| Transfer size | Full-width UVM traffic only | Legal narrow transfers + lane/strobe mapping |
+| Transfer size | Verilator byte/halfword lane checks + legal byte/halfword/full-width UVM stimulus | Carry narrow-transfer checks into packetized RTL |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
 | Functional coverage | Abstract bins + feedback + UVM covergroups | Export/merge simulator coverage |
@@ -40,7 +40,7 @@ The repository currently contains:
 
 ## UVM coverage layer
 
-The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, full-width transfer size, and the operation x length x burst cross. Narrow byte/halfword lane/strobe mapping is intentionally deferred until it is modeled correctly. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, and BIAS_WRITE plusargs.
+The UVM environment currently covers operation, burst length class, FIXED/INCR burst type, narrow/full-width transfer size, and the operation x length x burst cross. The byte-addressed reference memory aligns WSTRB lanes to the containing data-bus word; the Verilator reference smoke checks byte and halfword lane placement/readback. The coverage-guided sequence accepts BIAS_LONG, BIAS_MEDIUM, BIAS_FIXED, BIAS_INCR, BIAS_READ, BIAS_WRITE, BIAS_NARROW, and BIAS_FULL plusargs.
 
 The next UVM expansion should cover address
 alignment and boundary class, ID, outstanding depth, AXI channel backpressure,
@@ -72,7 +72,7 @@ read data ordering.
 
 ## Next implementation milestone
 
-1. Packetize full AXI INCR/FIXED/WRAP bursts and add legal narrow-transfer lane mapping.
+1. Packetize full AXI INCR/FIXED/WRAP bursts and carry the validated narrow-transfer lane mapping into the packetized RTL path.
 2. Add configurable multiple outstanding transactions.
 3. Add ID-aware reorder checking.
 4. Replace the reference channel tunnel in the UVM top with the packetized AXI-over-UCIe bridge plus a dedicated link agent.
