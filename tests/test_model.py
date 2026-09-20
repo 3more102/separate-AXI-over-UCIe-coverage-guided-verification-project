@@ -34,6 +34,17 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(cov.ratio, 1.0)
         self.assertEqual(cov.missing(), [])
 
+    def test_hit_counts_preserve_repeated_samples_and_zero_bins(self):
+        cov = CoverageTracker()
+        cov.hit("op.read", "integrity.no_loss")
+        cov.hit("op.read")
+
+        counts = cov.as_bin_counts()
+        self.assertEqual(counts["op.read"], 2)
+        self.assertEqual(counts["integrity.no_loss"], 1)
+        self.assertEqual(counts["error.crc"], 0)
+        self.assertEqual(set(counts), set(CoverageTracker.REQUIRED_BINS))
+
 
 if __name__ == "__main__":
     unittest.main()
