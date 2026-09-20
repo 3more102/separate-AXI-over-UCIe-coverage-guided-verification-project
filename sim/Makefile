@@ -10,7 +10,7 @@ UVM_SEED      ?= 1
 UVM_TXN_COUNT ?= 100
 UVM_PLUSARGS  ?=
 
-.PHONY: all smoke lint py-test regress feedback questa questa-guided clean
+.PHONY: all smoke lint py-test regress feedback feedback-sample questa questa-guided clean
 
 all: lint py-test smoke regress feedback
 
@@ -32,10 +32,15 @@ regress:
 		--mode guided --iterations 24 --transactions 8 --seed 1 \
 		--out build/guided_regression.json
 
-feedback:
+feedback: regress
+	cd .. && mkdir -p build && $(PYTHON) scripts/coverage_feedback.py \
+		--input build/guided_regression.json \
+		--output build/next_bias.json
+
+feedback-sample:
 	cd .. && mkdir -p build && $(PYTHON) scripts/coverage_feedback.py \
 		--input examples/coverage.sample.json \
-		--output build/next_bias.json
+		--output build/next_bias.sample.json
 
 # Optional commercial-UVM flow. The default open-source CI does not require Questa.
 questa:
