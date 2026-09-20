@@ -29,7 +29,7 @@ The repository currently contains:
 | AXI response backpressure | Covered | Cross with bursts and IDs |
 | Link request stall | Covered | Random stall distributions |
 | IDs | Preserved end-to-end | Multiple outstanding and reordering |
-| Partial write | Abstract model | RTL smoke and UVM sequence |
+| Partial write | UVM stimulus + coverpoint + feedback bias | Add RTL smoke cross-coverage |
 | Reset recovery | Smoke + abstract model | Mid-burst and multi-outstanding reset |
 | Link errors | Abstract CRC/timeout retry model | RTL/UVM fault injection |
 | Functional coverage | Abstract bins + feedback | Simulator covergroups and crosses |
