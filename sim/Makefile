@@ -10,9 +10,9 @@ UVM_SEED      ?= 1
 UVM_TXN_COUNT ?= 100
 UVM_PLUSARGS  ?=
 
-.PHONY: all smoke lint py-test regress feedback questa questa-guided clean
+.PHONY: all smoke lint py-test regress experiment feedback questa questa-guided clean
 
-all: lint py-test smoke regress feedback
+all: lint py-test smoke regress experiment feedback
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -31,6 +31,11 @@ regress:
 	cd .. && mkdir -p build && PYTHONPATH=python $(PYTHON) -m cgverif.regress \
 		--mode guided --iterations 24 --transactions 8 --seed 1 \
 		--out build/guided_regression.json
+
+experiment:
+	cd .. && mkdir -p build && PYTHONPATH=python $(PYTHON) -m cgverif.experiment \
+		--runs 8 --iterations 24 --transactions 8 --seed 1 \
+		--out build/experiment.json
 
 feedback:
 	cd .. && mkdir -p build && $(PYTHON) scripts/coverage_feedback.py \

@@ -53,6 +53,12 @@ Coverage-guided abstract regression:
       --mode guided --iterations 32 --transactions 16 --seed 1 \
       --out build/guided_regression.json
 
+Paired baseline-vs-guided experiment:
+
+    PYTHONPATH=python python3 -m cgverif.experiment \
+      --runs 20 --iterations 32 --transactions 16 --seed 1 \
+      --out build/experiment.json
+
 Coverage feedback:
 
     python3 scripts/coverage_feedback.py \
@@ -75,4 +81,4 @@ Coverage-guided UVM run, after choosing bias knobs:
 
 The packetized AXI-to-link RTL milestone still supports one AXI data beat per request. A separate UVM reference tunnel now exercises multi-beat AXI channel transport and end-to-end scoreboarding, but it is a methodology model rather than the packetized UCIe bridge. Multiple outstanding transactions, out-of-order completion, and detailed UCIe retry/CRC behavior remain future RTL/UVM integration work. The abstract Python model already exercises credit stalls, CRC retry, timeout retry, reset recovery, and coverage-guided scenario selection.
 
-See docs/VERIFICATION_PLAN.md for the implementation matrix and next steps.
+See docs/VERIFICATION_PLAN.md for the implementation matrix, docs/EXPERIMENT.md for the paired comparison method, and docs/VALIDATION.md for the current validation boundary.
